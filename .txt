@@ -1,0 +1,2 @@
+
+  i want a way to be able to map the headers between diffent csvs in like table where dropdown the columns and i can select which columns will be merged to which, if say i have 3 csvs then the mapping table should have like 3 coluns of where the rows are the csv headers, and i can be able to choose ahat maps to what also in some cases i may have columns not being merged to any too, the tool should be very versatile and design responsive, maintain current desing but and onto it all the functionalities

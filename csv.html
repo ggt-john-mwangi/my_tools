@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSV Merger Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .file-drop-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-area.active {
+            border-color: #4f46e5;
+            background-color: #f0f7ff;
+        }
+
+        .file-preview {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .header-mapping-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .custom-separator {
+            width: 50px;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">CSV Merger Tool</h1>
+            <p class="text-gray-600">Combine multiple CSV files with custom header mapping and separator options</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload CSV Files</h2>
+                    <div id="fileDropArea" class="file-drop-area rounded-lg p-8 text-center cursor-pointer mb-4">
+                        <i class="fas fa-file-csv text-4xl text-indigo-500 mb-3"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop CSV files here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supports multiple files</p>
+                        <input type="file" id="fileInput" class="hidden" accept=".csv" multiple>
+                    </div>
+                    <button id="uploadBtn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                        <i class="fas fa-upload mr-2"></i> Upload Files
+                    </button>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Output Settings</h2>
+                    <div class="mb-4">
+                        <label for="outputFilename" class="block text-sm font-medium text-gray-700 mb-1">Output
+                            Filename</label>
+                        <div class="flex">
+                            <input type="text" id="outputFilename"
+                                class="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value="merged_output">
+                            <span
+                                class="inline-flex items-center px-3 rounded-r-md bg-gray-50 text-gray-500 text-sm">.csv</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Separator</label>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <input id="defaultSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="," checked>
+                                <label for="defaultSeparator" class="ml-2 block text-sm text-gray-700">Comma ( ,
+                                    )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="semicolonSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value=";">
+                                <label for="semicolonSeparator" class="ml-2 block text-sm text-gray-700">Semicolon ( ;
+                                    )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="tabSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="\t">
+                                <label for="tabSeparator" class="ml-2 block text-sm text-gray-700">Tab ( \t )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="customSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="custom">
+                                <label for="customSeparator" class="ml-2 block text-sm text-gray-700">Custom:</label>
+                                <input type="text" id="customSeparatorInput"
+                                    class="ml-2 custom-separator rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    maxlength="1" disabled>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="mergeBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md transition disabled:opacity-50"
+                        disabled>
+                        <i class="fas fa-code-branch mr-2"></i> Merge CSV Files
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="filePreviewSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Uploaded Files</h2>
+            <div id="fileList" class="mb-4">
+                <!-- Files will be listed here -->
+            </div>
+            <div id="filePreview" class="file-preview border rounded-md p-4 hidden">
+                <h3 class="text-lg font-medium mb-2">File Preview</h3>
+                <div id="previewContent" class="overflow-x-auto"></div>
+            </div>
+        </div>
+
+        <div id="headerMappingSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Header Mapping</h2>
+            <p class="text-gray-600 mb-4">Map columns from different files to common output headers</p>
+            <div id="headerMappingContainer">
+                <!-- Header mapping will be shown here -->
+            </div>
+            <div class="mt-4 flex justify-end">
+                <button id="saveMappingBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                    <i class="fas fa-save mr-2"></i> Save Mapping
+                </button>
+            </div>
+        </div>
+
+        <div id="resultSection" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Merged Result</h2>
+            <div id="resultPreview" class="file-preview border rounded-md p-4 mb-4">
+                <div id="resultContent" class="overflow-x-auto"></div>
+            </div>
+            <button id="downloadBtn" class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md transition">
+                <i class="fas fa-download mr-2"></i> Download Merged CSV
+            </button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const fileDropArea = document.getElementById('fileDropArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const mergeBtn = document.getElementById('mergeBtn');
+            const fileList = document.getElementById('fileList');
+            const filePreviewSection = document.getElementById('filePreviewSection');
+            const headerMappingSection = document.getElementById('headerMappingSection');
+            const headerMappingContainer = document.getElementById('headerMappingContainer');
+            const resultSection = document.getElementById('resultSection');
+            const customSeparatorRadio = document.getElementById('customSeparator');
+            const customSeparatorInput = document.getElementById('customSeparatorInput');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const outputFilename = document.getElementById('outputFilename');
+
+            // Global variables
+            let uploadedFiles = [];
+            let fileHeaders = {};
+            let mergedData = [];
+            let outputHeaders = [];
+            let headerMapping = {};
+            let separator = ',';
+
+            // Event listeners for separator options
+            document.querySelectorAll('input[name="separator"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    if (this.value === 'custom') {
+                        customSeparatorInput.disabled = false;
+                        customSeparatorInput.focus();
+                    } else {
+                        customSeparatorInput.disabled = true;
+                        separator = this.value;
+                    }
+                });
+            });
+
+            customSeparatorInput.addEventListener('input', function () {
+                separator = this.value;
+            });
+
+            // Drag and drop functionality
+            fileDropArea.addEventListener('click', () => fileInput.click());
+
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('active');
+            });
+
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('active');
+            });
+
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('active');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFiles(fileInput.files);
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    handleFiles(fileInput.files);
+                }
+            });
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+
+            // Handle file processing
+            function handleFiles(files) {
+                uploadedFiles = [];
+                fileHeaders = {};
+
+                Array.from(files).forEach(file => {
+                    if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                        uploadedFiles.push(file);
+                    }
+                });
+
+                if (uploadedFiles.length === 0) {
+                    alert('Please upload valid CSV files.');
+                    return;
+                }
+
+                displayFileList();
+                parseFiles();
+            }
+
+            // Display list of uploaded files
+            function displayFileList() {
+                fileList.innerHTML = '';
+
+                if (uploadedFiles.length === 0) {
+                    fileList.innerHTML = '<p class="text-gray-500">No files uploaded yet.</p>';
+                    filePreviewSection.classList.add('hidden');
+                    headerMappingSection.classList.add('hidden');
+                    mergeBtn.disabled = true;
+                    return;
+                }
+
+                const list = document.createElement('ul');
+                list.className = 'divide-y divide-gray-200';
+
+                uploadedFiles.forEach((file, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'py-3 flex justify-between items-center';
+
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'flex items-center';
+
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-file-csv text-indigo-500 mr-3';
+
+                    const fileName = document.createElement('span');
+                    fileName.className = 'text-gray-700';
+                    fileName.textContent = file.name;
+
+                    const fileSize = document.createElement('span');
+                    fileSize.className = 'text-sm text-gray-500 ml-2';
+                    fileSize.textContent = `(${(file.size / 1024).toFixed(2)} KB)`;
+
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'text-indigo-600 hover:text-indigo-800 text-sm font-medium';
+                    previewBtn.innerHTML = '<i class="fas fa-eye mr-1"></i> Preview';
+                    previewBtn.addEventListener('click', () => previewFile(index));
+
+                    fileInfo.appendChild(icon);
+                    fileInfo.appendChild(fileName);
+                    fileInfo.appendChild(fileSize);
+
+                    listItem.appendChild(fileInfo);
+                    listItem.appendChild(previewBtn);
+
+                    list.appendChild(listItem);
+                });
+
+                fileList.appendChild(list);
+                filePreviewSection.classList.remove('hidden');
+                mergeBtn.disabled = false;
+            }
+
+            // Preview file content
+            function previewFile(index) {
+                const file = uploadedFiles[index];
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const content = e.target.result;
+                    const rows = content.split('\n').slice(0, 6); // Show first 5 rows
+
+                    const previewTable = document.createElement('table');
+                    previewTable.className = 'min-w-full divide-y divide-gray-200';
+
+                    const thead = document.createElement('thead');
+                    const tbody = document.createElement('tbody');
+
+                    rows.forEach((row, i) => {
+                        const tr = document.createElement('tr');
+                        const cells = row.split(',');
+
+                        cells.forEach(cell => {
+                            const td = document.createElement(i === 0 ? 'th' : 'td');
+                            td.className = i === 0 ? 'px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                                : 'px-4 py-2 text-sm text-gray-700';
+                            td.textContent = cell;
+                            tr.appendChild(td);
+                        });
+
+                        if (i === 0) {
+                            thead.appendChild(tr);
+                        } else {
+                            tbody.appendChild(tr);
+                        }
+                    });
+
+                    previewTable.appendChild(thead);
+                    previewTable.appendChild(tbody);
+
+                    const previewContent = document.getElementById('previewContent');
+                    previewContent.innerHTML = '';
+                    previewContent.appendChild(previewTable);
+
+                    document.getElementById('filePreview').classList.remove('hidden');
+                };
+
+                reader.readAsText(file);
+            }
+
+            // Parse all uploaded files to extract headers
+            function parseFiles() {
+                fileHeaders = {};
+
+                uploadedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        const content = e.target.result;
+                        const firstLine = content.split('\n')[0];
+                        const headers = firstLine.split(',');
+
+                        fileHeaders[file.name] = headers.map(h => h.trim());
+
+                        // If all files are processed, show header mapping
+                        if (Object.keys(fileHeaders).length === uploadedFiles.length) {
+                            showHeaderMapping();
+                        }
+                    };
+
+                    reader.readAsText(file);
+                });
+            }
+
+            // Display header mapping interface
+            function showHeaderMapping() {
+                headerMappingContainer.innerHTML = '';
+
+                // Get all unique headers from all files
+                const allHeaders = new Set();
+                Object.values(fileHeaders).forEach(headers => {
+                    headers.forEach(header => allHeaders.add(header));
+                });
+
+                // Create output header inputs
+                const outputHeaderSection = document.createElement('div');
+                outputHeaderSection.className = 'mb-6';
+
+                const outputHeaderLabel = document.createElement('h3');
+                outputHeaderLabel.className = 'text-lg font-medium mb-3 text-gray-700';
+                outputHeaderLabel.textContent = 'Output Headers';
+
+                const outputHeaderContainer = document.createElement('div');
+                outputHeaderContainer.className = 'grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-3';
+
+                // Add existing output headers if any
+                if (outputHeaders.length === 0) {
+                    // Initialize with first file's headers if no output headers set
+                    outputHeaders = [...fileHeaders[Object.keys(fileHeaders)[0]]];
+                }
+
+                outputHeaders.forEach((header, index) => {
+                    const headerInput = document.createElement('input');
+                    headerInput.type = 'text';
+                    headerInput.value = header;
+                    headerInput.className = 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+                    headerInput.placeholder = 'Header name';
+                    headerInput.addEventListener('change', (e) => {
+                        outputHeaders[index] = e.target.value;
+                    });
+
+                    outputHeaderContainer.appendChild(headerInput);
+                });
+
+                const addHeaderBtn = document.createElement('button');
+                addHeaderBtn.className = 'mt-2 inline-flex items-center px-3 py-1 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500';
+                addHeaderBtn.innerHTML = '<i class="fas fa-plus mr-1"></i> Add Header';
+                addHeaderBtn.addEventListener('click', () => {
+                    outputHeaders.push('');
+                    showHeaderMapping();
+                });
+
+                outputHeaderSection.appendChild(outputHeaderLabel);
+                outputHeaderSection.appendChild(outputHeaderContainer);
+                outputHeaderSection.appendChild(addHeaderBtn);
+                headerMappingContainer.appendChild(outputHeaderSection);
+
+                // Create file header mapping sections
+                Object.entries(fileHeaders).forEach(([filename, headers]) => {
+                    const fileSection = document.createElement('div');
+                    fileSection.className = 'mb-6';
+
+                    const fileLabel = document.createElement('h3');
+                    fileLabel.className = 'text-lg font-medium mb-3 text-gray-700';
+                    fileLabel.textContent = `Map headers for: ${filename}`;
+
+                    const mappingTable = document.createElement('table');
+                    mappingTable.className = 'min-w-full divide-y divide-gray-200';
+
+                    const thead = document.createElement('thead');
+                    const tbody = document.createElement('tbody');
+
+                    // Table header
+                    const headerRow = document.createElement('tr');
+
+                    const sourceHeader = document.createElement('th');
+                    sourceHeader.className = 'px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    sourceHeader.textContent = 'Source Header';
+
+                    const arrowCell = document.createElement('th');
+                    arrowCell.className = 'px-4 py-3 bg-gray-50 text-center text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    arrowCell.innerHTML = '<i class="fas fa-arrow-right"></i>';
+
+                    const targetHeader = document.createElement('th');
+                    targetHeader.className = 'px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    targetHeader.textContent = 'Output Header';
+
+                    headerRow.appendChild(sourceHeader);
+                    headerRow.appendChild(arrowCell);
+                    headerRow.appendChild(targetHeader);
+                    thead.appendChild(headerRow);
+
+                    // Table body
+                    headers.forEach(header => {
+                        const row = document.createElement('tr');
+                        row.className = 'header-mapping-row';
+
+                        const sourceCell = document.createElement('td');
+                        sourceCell.className = 'px-4 py-3 text-sm text-gray-700';
+                        sourceCell.textContent = header;
+
+                        const arrowCell = document.createElement('td');
+                        arrowCell.className = 'px-4 py-3 text-center text-gray-400';
+                        arrowCell.innerHTML = '<i class="fas fa-arrow-right"></i>';
+
+                        const targetCell = document.createElement('td');
+                        targetCell.className = 'px-4 py-3';
+
+                        const select = document.createElement('select');
+                        select.className = 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500';
+
+                        // Add empty option
+                        const emptyOption = document.createElement('option');
+                        emptyOption.value = '';
+                        emptyOption.textContent = '-- Skip this column --';
+                        select.appendChild(emptyOption);
+
+                        // Add output headers as options
+                        outputHeaders.forEach(outputHeader => {
+                            const option = document.createElement('option');
+                            option.value = outputHeader;
+                            option.textContent = outputHeader;
+
+                            // Set selected if this mapping exists
+                            if (headerMapping[filename] && headerMapping[filename][header] === outputHeader) {
+                                option.selected = true;
+                            }
+
+                            select.appendChild(option);
+                        });
+
+                        select.addEventListener('change', () => {
+                            if (!headerMapping[filename]) {
+                                headerMapping[filename] = {};
+                            }
+                            headerMapping[filename][header] = select.value;
+                        });
+
+                        targetCell.appendChild(select);
+
+                        row.appendChild(sourceCell);
+                        row.appendChild(arrowCell);
+                        row.appendChild(targetCell);
+                        tbody.appendChild(row);
+                    });
+
+                    mappingTable.appendChild(thead);
+                    mappingTable.appendChild(tbody);
+
+                    fileSection.appendChild(fileLabel);
+                    fileSection.appendChild(mappingTable);
+                    headerMappingContainer.appendChild(fileSection);
+                });
+
+                headerMappingSection.classList.remove('hidden');
+            }
+
+            // Save header mapping and prepare for merge
+            document.getElementById('saveMappingBtn').addEventListener('click', function () {
+                // Validate that at least one output header is mapped in each file
+                let isValid = true;
+
+                Object.keys(fileHeaders).forEach(filename => {
+                    const fileMap = headerMapping[filename] || {};
+                    const hasMapping = Object.values(fileMap).some(val => val !== '');
+
+                    if (!hasMapping) {
+                        isValid = false;
+                        alert(`Please map at least one header for file: ${filename}`);
+                        return;
+                    }
+                });
+
+                if (isValid) {
+                    mergeFiles();
+                }
+            });
+
+            // Merge files based on header mapping
+            function mergeFiles() {
+                mergedData = [];
+
+                // Add headers to merged data
+                mergedData.push(outputHeaders);
+
+                // Process each file
+                Promise.all(uploadedFiles.map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+
+                        reader.onload = function (e) {
+                            const content = e.target.result;
+                            const lines = content.split('\n');
+                            const headers = lines[0].split(',').map(h => h.trim());
+
+                            // Get mapping for this file
+                            const fileMap = headerMapping[file.name] || {};
+
+                            // Process each data row
+                            for (let i = 1; i < lines.length; i++) {
+                                if (lines[i].trim() === '') continue;
+
+                                const values = lines[i].split(',');
+                                const row = {};
+
+                                // Map values to output headers
+                                headers.forEach((header, index) => {
+                                    if (fileMap[header]) {
+                                        row[fileMap[header]] = values[index];
+                                    }
+                                });
+
+                                // Add to merged data if at least one value is mapped
+                                if (Object.keys(row).length > 0) {
+                                    // Create a new array in the order of outputHeaders
+                                    const orderedRow = outputHeaders.map(header => row[header] || '');
+                                    mergedData.push(orderedRow);
+                                }
+                            }
+
+                            resolve();
+                        };
+
+                        reader.readAsText(file);
+                    });
+                })).then(() => {
+                    showResult();
+                });
+            }
+
+            // Display merged result
+            function showResult() {
+                resultSection.classList.remove('hidden');
+
+                const resultContent = document.getElementById('resultContent');
+                resultContent.innerHTML = '';
+
+                if (mergedData.length === 0) {
+                    resultContent.innerHTML = '<p class="text-gray-500">No data to display. Check your header mappings.</p>';
+                    return;
+                }
+
+                const resultTable = document.createElement('table');
+                resultTable.className = 'min-w-full divide-y divide-gray-200';
+
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+
+                mergedData.forEach((row, i) => {
+                    const tr = document.createElement('tr');
+
+                    row.forEach(cell => {
+                        const td = document.createElement(i === 0 ? 'th' : 'td');
+                        td.className = i === 0 ? 'px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                            : 'px-4 py-2 text-sm text-gray-700';
+                        td.textContent = cell;
+                        tr.appendChild(td);
+                    });
+
+                    if (i === 0) {
+                        thead.appendChild(tr);
+                    } else {
+                        tbody.appendChild(tr);
+                    }
+                });
+
+                resultTable.appendChild(thead);
+                resultTable.appendChild(tbody);
+                resultContent.appendChild(resultTable);
+            }
+
+            // Download merged CSV
+            downloadBtn.addEventListener('click', function () {
+                if (mergedData.length === 0) {
+                    alert('No data to download.');
+                    return;
+                }
+
+                // Get the separator
+                let actualSeparator = separator;
+                if (customSeparatorRadio.checked) {
+                    actualSeparator = customSeparatorInput.value || ',';
+                }
+
+                // Convert data to CSV string
+                // const csvContent = mergedData.map(row => 
+                //     row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(actualSeparator)
+                // ).join('\n');
+                // Convert data to CSV string without modifying cell values
+                const csvContent = mergedData.map(row =>
+                    row.join(actualSeparator) // Just join columns without replacing quotes
+                ).join('\n');
+
+
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `${outputFilename.value || 'merged_output'}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,1445 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Modern Image Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/fabric@5.3.1/dist/fabric.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --sidebar-bg: #1e293b;
+            --sidebar-text: #f8fafc;
+            --toolbar-bg: #ffffff;
+            --canvas-bg: #f1f5f9;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            overflow: hidden;
+        }
+
+        .canvas-container {
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            background-color: white;
+            margin: 0 auto;
+            touch-action: none;
+        }
+
+        .tool-btn {
+            transition: all 0.2s ease;
+        }
+
+        .tool-btn.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        .sidebar {
+            transition: transform 0.3s ease;
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text);
+        }
+
+        .sidebar-header {
+            background-color: rgba(0, 0, 0, 0.1);
+        }
+
+        .property-panel {
+            transition: all 0.3s ease;
+            background-color: var(--toolbar-bg);
+        }
+
+        .image-thumbnail {
+            transition: all 0.2s ease;
+        }
+
+        .image-thumbnail:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+
+        .image-thumbnail.selected {
+            border: 2px solid var(--primary);
+        }
+
+        .color-picker {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            width: 30px;
+            height: 30px;
+            border: none;
+            cursor: pointer;
+            background-color: transparent;
+            border-radius: 50%;
+        }
+
+        .color-picker::-webkit-color-swatch {
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+        }
+
+        .color-picker::-moz-color-swatch {
+            border-radius: 50%;
+            border: 2px solid #e2e8f0;
+        }
+
+        .layer-item {
+            transition: all 0.2s ease;
+        }
+
+        .layer-item.selected {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .slider-thumb::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        .slider-thumb::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            cursor: pointer;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                position: absolute;
+                z-index: 40;
+                width: 280px;
+                transform: translateX(-100%);
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0 !important;
+            }
+
+            .canvas-container {
+                max-width: 100%;
+            }
+
+            .mobile-hidden {
+                display: none;
+            }
+        }
+
+        /* Loading spinner */
+        .spinner {
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            from {
+                transform: rotate(0deg);
+            }
+
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body class="bg-gray-100">
+    <div class="flex h-screen overflow-hidden">
+        <!-- Left Sidebar -->
+        <div class="sidebar w-64 flex flex-col">
+            <div class="sidebar-header p-4 flex items-center justify-between">
+                <h1 class="text-xl font-bold flex items-center">
+                    <i class="fas fa-image mr-2"></i>
+                    <span class="mobile-hidden">Image Editor</span>
+                </h1>
+                <button id="menu-toggle" class="md:hidden text-white">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <!-- Image Browser -->
+            <div class="p-4 border-b border-gray-700">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center">
+                        <i class="fas fa-folder-open mr-2"></i>
+                        <span>Image Library</span>
+                    </h2>
+                    <button id="upload-btn" class="text-xs bg-blue-500 hover:bg-blue-600 text-white py-1 px-2 rounded">
+                        <i class="fas fa-plus mr-1"></i>
+                        <span class="mobile-hidden">Upload</span>
+                    </button>
+                </div>
+
+                <div id="image-library" class="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto custom-scrollbar">
+                    <!-- Sample images -->
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1506744038136-46273834b3fb">
+                        <img src="https://images.unsplash.com/photo-1506744038136-46273834b3fb?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1501785888041-af3ef285b470">
+                        <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e">
+                        <img src="https://images.unsplash.com/photo-1441974231531-c6227db76b6e?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05">
+                        <img src="https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1447752875215-b2761acbde1e">
+                        <img src="https://images.unsplash.com/photo-1447752875215-b2761acbde1e?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                    <div class="image-thumbnail bg-gray-800 rounded overflow-hidden cursor-pointer"
+                        data-src="https://images.unsplash.com/photo-1472214103451-9374bd1c798e">
+                        <img src="https://images.unsplash.com/photo-1472214103451-9374bd1c798e?w=200&h=200&fit=crop&auto=format"
+                            class="w-full h-full object-cover" loading="lazy">
+                    </div>
+                </div>
+                <input type="file" id="file-input" class="hidden" accept="image/*">
+            </div>
+
+            <!-- Tools Panel -->
+            <div class="p-4 border-b border-gray-700">
+                <h2 class="text-sm font-semibold uppercase tracking-wider mb-3 flex items-center">
+                    <i class="fas fa-tools mr-2"></i>
+                    <span>Tools</span>
+                </h2>
+                <div class="grid grid-cols-4 gap-2">
+                    <button id="select-tool" class="tool-btn active p-2 rounded hover:bg-gray-700" title="Select">
+                        <i class="fas fa-mouse-pointer"></i>
+                    </button>
+                    <button id="crop-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Crop">
+                        <i class="fas fa-crop"></i>
+                    </button>
+                    <button id="pen-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Pen">
+                        <i class="fas fa-pen"></i>
+                    </button>
+                    <button id="text-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Text">
+                        <i class="fas fa-font"></i>
+                    </button>
+                    <button id="shape-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Shapes">
+                        <i class="fas fa-shapes"></i>
+                    </button>
+                    <button id="eraser-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Eraser">
+                        <i class="fas fa-eraser"></i>
+                    </button>
+                    <button id="filter-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Filters">
+                        <i class="fas fa-sliders-h"></i>
+                    </button>
+                    <button id="hand-tool" class="tool-btn p-2 rounded hover:bg-gray-700" title="Hand">
+                        <i class="fas fa-hand-paper"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Layers Panel -->
+            <div class="flex-1 p-4 overflow-y-auto custom-scrollbar">
+                <div class="flex justify-between items-center mb-3">
+                    <h2 class="text-sm font-semibold uppercase tracking-wider flex items-center">
+                        <i class="fas fa-layer-group mr-2"></i>
+                        <span>Layers</span>
+                    </h2>
+                    <div class="flex space-x-2">
+                        <button id="add-layer" class="text-blue-400 hover:text-blue-300" title="Add Layer">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button id="delete-layer" class="text-red-400 hover:text-red-300" title="Delete Layer">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+                <ul id="layers-list" class="space-y-1">
+                    <!-- Layers will be added here dynamically -->
+                </ul>
+            </div>
+
+            <!-- Export Panel -->
+            <div class="p-4 border-t border-gray-700">
+                <button id="export-btn"
+                    class="w-full bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded flex items-center justify-center">
+                    <i class="fas fa-download mr-2"></i>
+                    <span>Export Image</span>
+                </button>
+                <div class="mt-2 grid grid-cols-2 gap-2">
+                    <select id="export-format" class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                        <option value="png">PNG</option>
+                        <option value="jpeg">JPEG</option>
+                        <option value="svg">SVG</option>
+                    </select>
+                    <select id="export-quality" class="w-full p-2 bg-gray-700 border border-gray-600 rounded text-sm">
+                        <option value="1">High Quality</option>
+                        <option value="0.8">Medium Quality</option>
+                        <option value="0.6">Low Quality</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <div class="main-content flex-1 flex flex-col overflow-hidden ml-64">
+            <!-- Top Toolbar -->
+            <div class="bg-white border-b border-gray-200 p-3 flex items-center justify-between">
+                <div class="flex items-center space-x-2">
+                    <button id="sidebar-toggle" class="md:hidden text-gray-600 hover:text-gray-900">
+                        <i class="fas fa-bars"></i>
+                    </button>
+
+                    <div class="flex space-x-1">
+                        <button id="undo-btn" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Undo">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button id="redo-btn" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Redo">
+                            <i class="fas fa-redo"></i>
+                        </button>
+                        <button id="clear-btn" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Clear Canvas">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex items-center space-x-2 ml-2">
+                        <button id="zoom-in" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Zoom In">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button id="zoom-out" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button id="zoom-reset" class="p-2 rounded hover:bg-gray-100 text-gray-600 hover:text-gray-900"
+                            title="Reset Zoom">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex items-center space-x-3">
+                    <div class="flex items-center space-x-1">
+                        <span class="text-sm text-gray-500">Canvas Size:</span>
+                        <select id="canvas-size" class="p-1 border border-gray-300 rounded text-sm">
+                            <option value="800x600">800×600</option>
+                            <option value="1024x768">1024×768</option>
+                            <option value="1920x1080">1920×1080</option>
+                            <option value="custom">Custom...</option>
+                        </select>
+                    </div>
+
+                    <div class="flex items-center space-x-1">
+                        <span class="text-sm text-gray-500">BG:</span>
+                        <input type="color" id="canvas-bg-color" class="color-picker" value="#ffffff">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Canvas Area -->
+            <div class="flex-1 overflow-auto p-4 bg-gray-100 flex items-center justify-center">
+                <div class="relative">
+                    <div id="canvas-container" class="canvas-container">
+                        <canvas id="canvas" width="800" height="600"></canvas>
+                    </div>
+
+                    <!-- Loading overlay -->
+                    <div id="loading-overlay"
+                        class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden">
+                        <div class="bg-white p-4 rounded-lg shadow-lg flex items-center">
+                            <div class="spinner text-blue-500 mr-3">
+                                <i class="fas fa-circle-notch fa-2x"></i>
+                            </div>
+                            <span>Processing image...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Properties Panel -->
+            <div class="property-panel border-t border-gray-200 p-3">
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-sm font-semibold text-gray-700 uppercase tracking-wider flex items-center">
+                        <i class="fas fa-sliders-h mr-2"></i>
+                        <span>Properties</span>
+                    </h2>
+                    <button id="toggle-properties" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-chevron-down"></i>
+                    </button>
+                </div>
+
+                <div id="properties-content" class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Fill Color</label>
+                            <input type="color" id="fill-color" class="color-picker" value="#3b82f6">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Stroke Color</label>
+                            <input type="color" id="stroke-color" class="color-picker" value="#000000">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Stroke Width</label>
+                        <input type="range" id="stroke-width" min="1" max="20" value="2" class="w-full slider-thumb">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-medium text-gray-500 mb-1">Opacity</label>
+                        <input type="range" id="opacity" min="0" max="100" value="100" class="w-full slider-thumb">
+                    </div>
+
+                    <!-- Text Properties -->
+                    <div id="text-properties" class="hidden space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Font Family</label>
+                            <select id="font-family" class="w-full p-2 border border-gray-300 rounded text-sm">
+                                <option value="Arial">Arial</option>
+                                <option value="Verdana">Verdana</option>
+                                <option value="Helvetica">Helvetica</option>
+                                <option value="Times New Roman">Times New Roman</option>
+                                <option value="Courier New">Courier New</option>
+                                <option value="Georgia">Georgia</option>
+                            </select>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Font Size</label>
+                                <input type="number" id="font-size" min="8" max="120" value="24"
+                                    class="w-full p-2 border border-gray-300 rounded text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-medium text-gray-500 mb-1">Font Weight</label>
+                                <select id="font-weight" class="w-full p-2 border border-gray-300 rounded text-sm">
+                                    <option value="normal">Normal</option>
+                                    <option value="bold">Bold</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Text Align</label>
+                            <div class="flex space-x-1">
+                                <button id="text-align-left"
+                                    class="p-2 border border-gray-300 rounded hover:bg-gray-100">
+                                    <i class="fas fa-align-left"></i>
+                                </button>
+                                <button id="text-align-center"
+                                    class="p-2 border border-gray-300 rounded hover:bg-gray-100">
+                                    <i class="fas fa-align-center"></i>
+                                </button>
+                                <button id="text-align-right"
+                                    class="p-2 border border-gray-300 rounded hover:bg-gray-100">
+                                    <i class="fas fa-align-right"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Shape Properties -->
+                    <div id="shape-properties" class="hidden space-y-3">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Shape Type</label>
+                            <select id="shape-type" class="w-full p-2 border border-gray-300 rounded text-sm">
+                                <option value="rect">Rectangle</option>
+                                <option value="circle">Circle</option>
+                                <option value="triangle">Triangle</option>
+                                <option value="line">Line</option>
+                                <option value="ellipse">Ellipse</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Corner Radius</label>
+                            <input type="range" id="corner-radius" min="0" max="50" value="0"
+                                class="w-full slider-thumb">
+                        </div>
+                    </div>
+
+                    <!-- Image Properties -->
+                    <div id="image-properties" class="hidden space-y-3">
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="remove-bg-btn"
+                                class="bg-blue-500 hover:bg-blue-600 text-white py-2 px-3 rounded text-sm">
+                                <i class="fas fa-magic mr-1"></i> Remove BG
+                            </button>
+                            <button id="apply-filter-btn"
+                                class="bg-gray-200 hover:bg-gray-300 py-2 px-3 rounded text-sm">
+                                <i class="fas fa-sliders-h mr-1"></i> Filters
+                            </button>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Brightness</label>
+                            <input type="range" id="brightness" min="-100" max="100" value="0"
+                                class="w-full slider-thumb">
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500 mb-1">Contrast</label>
+                            <input type="range" id="contrast" min="-100" max="100" value="0"
+                                class="w-full slider-thumb">
+                        </div>
+                    </div>
+
+                    <!-- Filter Panel (hidden by default) -->
+                    <div id="filter-panel" class="hidden space-y-3">
+                        <div class="grid grid-cols-3 gap-2">
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="none">
+                                None
+                            </button>
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="grayscale">
+                                Grayscale
+                            </button>
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="sepia">
+                                Sepia
+                            </button>
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="invert">
+                                Invert
+                            </button>
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="blur">
+                                Blur
+                            </button>
+                            <button class="filter-preset p-2 border border-gray-300 rounded hover:bg-gray-100 text-xs"
+                                data-filter="vintage">
+                                Vintage
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize Fabric.js canvas
+            const canvas = new fabric.Canvas('canvas', {
+                backgroundColor: '#ffffff',
+                preserveObjectStacking: true,
+                selection: true,
+                selectionColor: 'rgba(99, 102, 241, 0.3)',
+                selectionBorderColor: '#6366f1',
+                selectionLineWidth: 1
+            });
+
+            // State management
+            let history = [];
+            let historyIndex = -1;
+            let currentTool = 'select';
+            let zoomLevel = 1;
+            let isDrawing = false;
+            let currentShape = null;
+            let startX, startY;
+
+            // DOM elements
+            const menuToggle = document.getElementById('menu-toggle');
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            const toolButtons = document.querySelectorAll('.tool-btn');
+            const uploadBtn = document.getElementById('upload-btn');
+            const fileInput = document.getElementById('file-input');
+            const undoBtn = document.getElementById('undo-btn');
+            const redoBtn = document.getElementById('redo-btn');
+            const clearBtn = document.getElementById('clear-btn');
+            const exportBtn = document.getElementById('export-btn');
+            const exportFormat = document.getElementById('export-format');
+            const exportQuality = document.getElementById('export-quality');
+            const addLayerBtn = document.getElementById('add-layer');
+            const deleteLayerBtn = document.getElementById('delete-layer');
+            const layersList = document.getElementById('layers-list');
+            const removeBgBtn = document.getElementById('remove-bg-btn');
+            const applyFilterBtn = document.getElementById('apply-filter-btn');
+            const filterPanel = document.getElementById('filter-panel');
+            const toggleProperties = document.getElementById('toggle-properties');
+            const propertiesContent = document.getElementById('properties-content');
+            const loadingOverlay = document.getElementById('loading-overlay');
+            const canvasBgColor = document.getElementById('canvas-bg-color');
+            const canvasSizeSelect = document.getElementById('canvas-size');
+            const zoomInBtn = document.getElementById('zoom-in');
+            const zoomOutBtn = document.getElementById('zoom-out');
+            const zoomResetBtn = document.getElementById('zoom-reset');
+            const imageLibrary = document.getElementById('image-library');
+
+            // Property controls
+            const fillColor = document.getElementById('fill-color');
+            const strokeColor = document.getElementById('stroke-color');
+            const strokeWidth = document.getElementById('stroke-width');
+            const opacity = document.getElementById('opacity');
+            const fontFamily = document.getElementById('font-family');
+            const fontSize = document.getElementById('font-size');
+            const fontWeight = document.getElementById('font-weight');
+            const textAlignLeft = document.getElementById('text-align-left');
+            const textAlignCenter = document.getElementById('text-align-center');
+            const textAlignRight = document.getElementById('text-align-right');
+            const shapeType = document.getElementById('shape-type');
+            const cornerRadius = document.getElementById('corner-radius');
+            const brightness = document.getElementById('brightness');
+            const contrast = document.getElementById('contrast');
+
+            // Property panels
+            const textProperties = document.getElementById('text-properties');
+            const shapeProperties = document.getElementById('shape-properties');
+            const imageProperties = document.getElementById('image-properties');
+
+            // Save canvas state to history
+            function saveState() {
+                // If we're not at the end of history, discard future states
+                if (historyIndex < history.length - 1) {
+                    history = history.slice(0, historyIndex + 1);
+                }
+
+                history.push(JSON.stringify(canvas));
+                historyIndex++;
+
+                // Limit history to 50 states
+                if (history.length > 50) {
+                    history.shift();
+                    historyIndex--;
+                }
+
+                updateUndoRedoButtons();
+            }
+
+            // Update undo/redo button states
+            function updateUndoRedoButtons() {
+                undoBtn.disabled = historyIndex <= 0;
+                redoBtn.disabled = historyIndex >= history.length - 1;
+            }
+
+            // Undo action
+            function undo() {
+                if (historyIndex > 0) {
+                    historyIndex--;
+                    canvas.loadFromJSON(history[historyIndex], function () {
+                        canvas.renderAll();
+                        updateLayersList();
+                    });
+                }
+            }
+
+            // Redo action
+            function redo() {
+                if (historyIndex < history.length - 1) {
+                    historyIndex++;
+                    canvas.loadFromJSON(history[historyIndex], function () {
+                        canvas.renderAll();
+                        updateLayersList();
+                    });
+                }
+            }
+
+            // Update layers list
+            function updateLayersList() {
+                layersList.innerHTML = '';
+
+                // Reverse the objects array to show top layers first
+                const objects = canvas.getObjects().slice().reverse();
+
+                objects.forEach((obj, index) => {
+                    const li = document.createElement('li');
+                    li.className = 'layer-item p-2 flex items-center justify-between hover:bg-gray-700 rounded cursor-pointer';
+                    if (obj === canvas.getActiveObject()) {
+                        li.classList.add('selected');
+                    }
+
+                    const icon = document.createElement('i');
+                    if (obj.type === 'text') {
+                        icon.className = 'fas fa-font mr-2 text-sm';
+                    } else if (obj.type === 'rect' || obj.type === 'circle' || obj.type === 'triangle' || obj.type === 'ellipse') {
+                        icon.className = 'fas fa-square mr-2 text-sm';
+                    } else if (obj.type === 'image') {
+                        icon.className = 'fas fa-image mr-2 text-sm';
+                    } else if (obj.type === 'path') {
+                        icon.className = 'fas fa-pen mr-2 text-sm';
+                    } else if (obj.type === 'line') {
+                        icon.className = 'fas fa-minus mr-2 text-sm';
+                    } else {
+                        icon.className = 'fas fa-layer-group mr-2 text-sm';
+                    }
+
+                    const text = document.createElement('span');
+                    text.textContent = obj.type.charAt(0).toUpperCase() + obj.type.slice(1) + ' ' + (objects.length - index);
+                    text.className = 'flex-1 truncate text-sm';
+
+                    const visibilityBtn = document.createElement('button');
+                    visibilityBtn.className = 'text-gray-400 hover:text-white ml-2';
+                    visibilityBtn.innerHTML = '<i class="fas fa-eye text-sm"></i>';
+                    visibilityBtn.onclick = function (e) {
+                        e.stopPropagation();
+                        obj.visible = !obj.visible;
+                        canvas.renderAll();
+                        this.innerHTML = obj.visible ? '<i class="fas fa-eye text-sm"></i>' : '<i class="fas fa-eye-slash text-sm"></i>';
+                    };
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'text-red-400 hover:text-red-300 ml-2';
+                    deleteBtn.innerHTML = '<i class="fas fa-trash text-sm"></i>';
+                    deleteBtn.onclick = function (e) {
+                        e.stopPropagation();
+                        canvas.remove(obj);
+                        saveState();
+                        updateLayersList();
+                    };
+
+                    li.appendChild(icon);
+                    li.appendChild(text);
+                    li.appendChild(visibilityBtn);
+                    li.appendChild(deleteBtn);
+
+                    li.onclick = function () {
+                        canvas.setActiveObject(obj);
+                        canvas.renderAll();
+                        updatePropertiesPanel();
+                        document.querySelectorAll('.layer-item').forEach(item => {
+                            item.classList.remove('selected');
+                        });
+                        this.classList.add('selected');
+                    };
+
+                    layersList.appendChild(li);
+                });
+            }
+
+            // Update properties panel based on selected object
+            function updatePropertiesPanel() {
+                const activeObject = canvas.getActiveObject();
+
+                // Hide all property sections
+                textProperties.classList.add('hidden');
+                shapeProperties.classList.add('hidden');
+                imageProperties.classList.add('hidden');
+                filterPanel.classList.add('hidden');
+
+                if (!activeObject) {
+                    return;
+                }
+
+                // Show relevant properties
+                if (activeObject.type === 'text') {
+                    textProperties.classList.remove('hidden');
+                    fontFamily.value = activeObject.fontFamily || 'Arial';
+                    fontSize.value = activeObject.fontSize || 24;
+                    fontWeight.value = activeObject.fontWeight || 'normal';
+                } else if (activeObject.type === 'rect' || activeObject.type === 'circle' || activeObject.type === 'triangle' || activeObject.type === 'ellipse') {
+                    shapeProperties.classList.remove('hidden');
+                    shapeType.value = activeObject.type;
+                    cornerRadius.value = activeObject.rx || activeObject.ry || 0;
+                } else if (activeObject.type === 'image') {
+                    imageProperties.classList.remove('hidden');
+                }
+
+                // Update common properties
+                fillColor.value = activeObject.fill ? rgbToHex(activeObject.fill) : '#000000';
+                strokeColor.value = activeObject.stroke ? rgbToHex(activeObject.stroke) : '#000000';
+                strokeWidth.value = activeObject.strokeWidth || 1;
+                opacity.value = activeObject.opacity ? activeObject.opacity * 100 : 100;
+            }
+
+            // Convert RGB to hex
+            function rgbToHex(rgb) {
+                if (!rgb) return '#000000';
+                if (typeof rgb === 'string' && rgb.startsWith('#')) return rgb;
+
+                return '#' + (
+                    (1 << 24) +
+                    (Math.round(rgb.r) << 16) +
+                    (Math.round(rgb.g) << 8) +
+                    Math.round(rgb.b)
+                ).toString(16).slice(1);
+            }
+
+            // Zoom functions
+            function zoomIn() {
+                zoomLevel += 0.1;
+                applyZoom();
+            }
+
+            function zoomOut() {
+                if (zoomLevel > 0.2) {
+                    zoomLevel -= 0.1;
+                    applyZoom();
+                }
+            }
+
+            function zoomReset() {
+                zoomLevel = 1;
+                applyZoom();
+            }
+
+            function applyZoom() {
+                const container = document.getElementById('canvas-container');
+                container.style.transform = `scale(${zoomLevel})`;
+                canvas.setWidth(canvas.getWidth());
+                canvas.setHeight(canvas.getHeight());
+                canvas.renderAll();
+            }
+
+            // Initialize event listeners
+            function initEventListeners() {
+                // Menu toggle for mobile
+                menuToggle.addEventListener('click', function () {
+                    sidebar.classList.toggle('open');
+                });
+
+                sidebarToggle.addEventListener('click', function () {
+                    sidebar.classList.toggle('open');
+                });
+
+                // Toggle properties panel
+                toggleProperties.addEventListener('click', function () {
+                    propertiesContent.classList.toggle('hidden');
+                    this.innerHTML = propertiesContent.classList.contains('hidden') ?
+                        '<i class="fas fa-chevron-up"></i>' :
+                        '<i class="fas fa-chevron-down"></i>';
+                });
+
+                // Tool selection
+                toolButtons.forEach(button => {
+                    button.addEventListener('click', function () {
+                        toolButtons.forEach(btn => btn.classList.remove('active'));
+                        this.classList.add('active');
+                        currentTool = this.id.replace('-tool', '');
+
+                        // Set canvas behavior based on tool
+                        canvas.isDrawingMode = currentTool === 'pen';
+                        canvas.selection = currentTool === 'select';
+
+                        // Set cursor based on tool
+                        switch (currentTool) {
+                            case 'select':
+                                canvas.defaultCursor = 'default';
+                                break;
+                            case 'pen':
+                                canvas.defaultCursor = 'crosshair';
+                                break;
+                            case 'text':
+                                canvas.defaultCursor = 'text';
+                                break;
+                            case 'hand':
+                                canvas.defaultCursor = 'grab';
+                                break;
+                            default:
+                                canvas.defaultCursor = 'crosshair';
+                        }
+                    });
+                });
+
+                // Canvas events
+                canvas.on('object:added', function () {
+                    saveState();
+                    updateLayersList();
+                });
+
+                canvas.on('object:modified', function () {
+                    saveState();
+                    updateLayersList();
+                });
+
+                canvas.on('selection:created', function () {
+                    updatePropertiesPanel();
+                    updateLayersList();
+                });
+
+                canvas.on('selection:updated', function () {
+                    updatePropertiesPanel();
+                    updateLayersList();
+                });
+
+                canvas.on('selection:cleared', function () {
+                    updatePropertiesPanel();
+                    document.querySelectorAll('.layer-item').forEach(item => {
+                        item.classList.remove('selected');
+                    });
+                });
+
+                // Drawing tools
+                canvas.on('mouse:down', function (options) {
+                    if (currentTool === 'text') {
+                        const text = new fabric.IText('Type here', {
+                            left: options.e.clientX - canvas.upperCanvasEl.getBoundingClientRect().left,
+                            top: options.e.clientY - canvas.upperCanvasEl.getBoundingClientRect().top,
+                            fontFamily: fontFamily.value,
+                            fontSize: parseInt(fontSize.value),
+                            fontWeight: fontWeight.value,
+                            fill: fillColor.value
+                        });
+                        canvas.add(text);
+                        canvas.setActiveObject(text);
+                        canvas.renderAll();
+                    } else if (currentTool === 'shape') {
+                        isDrawing = true;
+                        const pointer = canvas.getPointer(options.e);
+                        startX = pointer.x;
+                        startY = pointer.y;
+
+                        let shape;
+                        const fill = fillColor.value;
+                        const stroke = strokeColor.value;
+                        const strokeWidthVal = parseInt(strokeWidth.value);
+                        const opacityVal = parseInt(opacity.value) / 100;
+
+                        if (shapeType.value === 'rect') {
+                            shape = new fabric.Rect({
+                                left: startX,
+                                top: startY,
+                                width: 0,
+                                height: 0,
+                                fill: fill,
+                                stroke: stroke,
+                                strokeWidth: strokeWidthVal,
+                                opacity: opacityVal,
+                                rx: cornerRadius.value,
+                                ry: cornerRadius.value
+                            });
+                        } else if (shapeType.value === 'circle') {
+                            shape = new fabric.Circle({
+                                left: startX,
+                                top: startY,
+                                radius: 0,
+                                fill: fill,
+                                stroke: stroke,
+                                strokeWidth: strokeWidthVal,
+                                opacity: opacityVal
+                            });
+                        } else if (shapeType.value === 'triangle') {
+                            shape = new fabric.Triangle({
+                                left: startX,
+                                top: startY,
+                                width: 0,
+                                height: 0,
+                                fill: fill,
+                                stroke: stroke,
+                                strokeWidth: strokeWidthVal,
+                                opacity: opacityVal
+                            });
+                        } else if (shapeType.value === 'line') {
+                            shape = new fabric.Line([startX, startY, startX, startY], {
+                                stroke: stroke,
+                                strokeWidth: strokeWidthVal,
+                                opacity: opacityVal
+                            });
+                        } else if (shapeType.value === 'ellipse') {
+                            shape = new fabric.Ellipse({
+                                left: startX,
+                                top: startY,
+                                rx: 0,
+                                ry: 0,
+                                fill: fill,
+                                stroke: stroke,
+                                strokeWidth: strokeWidthVal,
+                                opacity: opacityVal
+                            });
+                        }
+
+                        currentShape = shape;
+                        canvas.add(shape);
+                        canvas.setActiveObject(shape);
+                    }
+                });
+
+                canvas.on('mouse:move', function (options) {
+                    if (!isDrawing || !currentShape) return;
+
+                    const pointer = canvas.getPointer(options.e);
+                    const x = pointer.x;
+                    const y = pointer.y;
+
+                    if (shapeType.value === 'rect') {
+                        currentShape.set({
+                            width: x - startX,
+                            height: y - startY
+                        });
+                    } else if (shapeType.value === 'circle') {
+                        const radius = Math.sqrt(Math.pow(x - startX, 2) + Math.pow(y - startY, 2)) / 2;
+                        currentShape.set({
+                            radius: radius,
+                            left: startX - radius,
+                            top: startY - radius
+                        });
+                    } else if (shapeType.value === 'triangle') {
+                        currentShape.set({
+                            width: x - startX,
+                            height: y - startY
+                        });
+                    } else if (shapeType.value === 'line') {
+                        currentShape.set({
+                            x2: x,
+                            y2: y
+                        });
+                    } else if (shapeType.value === 'ellipse') {
+                        currentShape.set({
+                            rx: Math.abs(x - startX) / 2,
+                            ry: Math.abs(y - startY) / 2
+                        });
+                    }
+
+                    canvas.renderAll();
+                });
+
+                canvas.on('mouse:up', function () {
+                    isDrawing = false;
+                    currentShape = null;
+                    saveState();
+                });
+
+                // Image library click events
+                imageLibrary.addEventListener('click', function (e) {
+                    const thumbnail = e.target.closest('.image-thumbnail');
+                    if (!thumbnail) return;
+
+                    // Remove previous selections
+                    document.querySelectorAll('.image-thumbnail').forEach(el => {
+                        el.classList.remove('selected');
+                    });
+
+                    // Add selection to clicked thumbnail
+                    thumbnail.classList.add('selected');
+
+                    // Show loading overlay
+                    loadingOverlay.classList.remove('hidden');
+
+                    const imageUrl = thumbnail.dataset.src;
+
+                    // Load the full image
+                    fabric.Image.fromURL(imageUrl, function (img) {
+                        // Scale down if image is too large
+                        const maxWidth = canvas.getWidth() * 0.8;
+                        const maxHeight = canvas.getHeight() * 0.8;
+
+                        if (img.width > maxWidth || img.height > maxHeight) {
+                            const scale = Math.min(
+                                maxWidth / img.width,
+                                maxHeight / img.height
+                            );
+                            img.scale(scale);
+                        }
+
+                        // Center the image
+                        img.set({
+                            left: (canvas.getWidth() - img.getScaledWidth()) / 2,
+                            top: (canvas.getHeight() - img.getScaledHeight()) / 2,
+                            originX: 'left',
+                            originY: 'top'
+                        });
+
+                        canvas.add(img);
+                        canvas.setActiveObject(img);
+                        canvas.renderAll();
+
+                        // Hide loading overlay
+                        loadingOverlay.classList.add('hidden');
+                    }, {
+                        crossOrigin: 'anonymous'
+                    });
+                });
+
+                // Upload image
+                uploadBtn.addEventListener('click', function () {
+                    fileInput.click();
+                });
+
+                fileInput.addEventListener('change', function (e) {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    // Show loading overlay
+                    loadingOverlay.classList.remove('hidden');
+
+                    const reader = new FileReader();
+                    reader.onload = function (f) {
+                        fabric.Image.fromURL(f.target.result, function (img) {
+                            // Scale down if image is too large
+                            const maxWidth = canvas.getWidth() * 0.8;
+                            const maxHeight = canvas.getHeight() * 0.8;
+
+                            if (img.width > maxWidth || img.height > maxHeight) {
+                                const scale = Math.min(
+                                    maxWidth / img.width,
+                                    maxHeight / img.height
+                                );
+                                img.scale(scale);
+                            }
+
+                            // Center the image
+                            img.set({
+                                left: (canvas.getWidth() - img.getScaledWidth()) / 2,
+                                top: (canvas.getHeight() - img.getScaledHeight()) / 2,
+                                originX: 'left',
+                                originY: 'top'
+                            });
+
+                            canvas.add(img);
+                            canvas.setActiveObject(img);
+                            canvas.renderAll();
+
+                            // Hide loading overlay
+                            loadingOverlay.classList.add('hidden');
+                        });
+                    };
+                    reader.readAsDataURL(file);
+                });
+
+                // Undo/Redo
+                undoBtn.addEventListener('click', undo);
+                redoBtn.addEventListener('click', redo);
+
+                // Clear canvas
+                clearBtn.addEventListener('click', function () {
+                    if (confirm('Are you sure you want to clear the canvas?')) {
+                        canvas.clear();
+                        canvas.backgroundColor = canvasBgColor.value;
+                        saveState();
+                        updateLayersList();
+                    }
+                });
+
+                // Export image
+                exportBtn.addEventListener('click', function () {
+                    const format = exportFormat.value;
+                    const quality = parseFloat(exportQuality.value);
+                    let dataUrl;
+
+                    if (format === 'svg') {
+                        dataUrl = canvas.toSVG();
+                    } else {
+                        dataUrl = canvas.toDataURL({
+                            format: format,
+                            quality: quality
+                        });
+                    }
+
+                    const link = document.createElement('a');
+                    link.download = 'image-editor-export.' + format;
+                    link.href = dataUrl;
+                    link.click();
+                });
+
+                // Add new layer
+                addLayerBtn.addEventListener('click', function () {
+                    const rect = new fabric.Rect({
+                        left: 100,
+                        top: 100,
+                        width: 100,
+                        height: 100,
+                        fill: fillColor.value,
+                        stroke: strokeColor.value,
+                        strokeWidth: parseInt(strokeWidth.value),
+                        opacity: parseInt(opacity.value) / 100
+                    });
+                    canvas.add(rect);
+                    canvas.setActiveObject(rect);
+                    canvas.renderAll();
+                });
+
+                // Delete layer
+                deleteLayerBtn.addEventListener('click', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject) {
+                        canvas.remove(activeObject);
+                        saveState();
+                        updateLayersList();
+                    }
+                });
+
+                // Remove background (simulated)
+                removeBgBtn.addEventListener('click', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (!activeObject || activeObject.type !== 'image') return;
+
+                    // Show loading overlay
+                    loadingOverlay.classList.remove('hidden');
+
+                    // Simulate background removal with a timeout
+                    setTimeout(() => {
+                        // In a real app, you would call a background removal API here
+                        // For demo purposes, we'll just add a white background
+                        activeObject.set({
+                            backgroundColor: '#ffffff'
+                        });
+                        canvas.renderAll();
+
+                        // Hide loading overlay
+                        loadingOverlay.classList.add('hidden');
+                    }, 1500);
+                });
+
+                // Apply filter button
+                applyFilterBtn.addEventListener('click', function () {
+                    filterPanel.classList.toggle('hidden');
+                });
+
+                // Filter presets
+                document.querySelectorAll('.filter-preset').forEach(button => {
+                    button.addEventListener('click', function () {
+                        const filterType = this.dataset.filter;
+                        const activeObject = canvas.getActiveObject();
+                        if (!activeObject || activeObject.type !== 'image') return;
+
+                        // Remove existing filters
+                        activeObject.filters = [];
+
+                        // Apply selected filter
+                        switch (filterType) {
+                            case 'grayscale':
+                                activeObject.filters.push(new fabric.Image.filters.Grayscale());
+                                break;
+                            case 'sepia':
+                                activeObject.filters.push(new fabric.Image.filters.Sepia());
+                                break;
+                            case 'invert':
+                                activeObject.filters.push(new fabric.Image.filters.Invert());
+                                break;
+                            case 'blur':
+                                activeObject.filters.push(new fabric.Image.filters.Blur({
+                                    blur: 0.2
+                                }));
+                                break;
+                            case 'vintage':
+                                activeObject.filters.push(
+                                    new fabric.Image.filters.Sepia(),
+                                    new fabric.Image.filters.Brightness({
+                                        brightness: 0.1
+                                    }),
+                                    new fabric.Image.filters.Contrast({
+                                        contrast: 0.1
+                                    })
+                                );
+                                break;
+                            case 'none':
+                            default:
+                                // No filter applied
+                                break;
+                        }
+
+                        activeObject.applyFilters();
+                        canvas.renderAll();
+                        saveState();
+                    });
+                });
+
+                // Property changes
+                fillColor.addEventListener('change', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject) {
+                        activeObject.set('fill', this.value);
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                strokeColor.addEventListener('change', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject) {
+                        activeObject.set('stroke', this.value);
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                strokeWidth.addEventListener('input', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject) {
+                        activeObject.set('strokeWidth', parseInt(this.value));
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                opacity.addEventListener('input', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject) {
+                        activeObject.set('opacity', parseInt(this.value) / 100);
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                fontFamily.addEventListener('change', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('fontFamily', this.value);
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                fontSize.addEventListener('change', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('fontSize', parseInt(this.value));
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                fontWeight.addEventListener('change', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('fontWeight', this.value);
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                // Text alignment
+                textAlignLeft.addEventListener('click', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('textAlign', 'left');
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                textAlignCenter.addEventListener('click', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('textAlign', 'center');
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                textAlignRight.addEventListener('click', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && activeObject.type === 'text') {
+                        activeObject.set('textAlign', 'right');
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                // Shape corner radius
+                cornerRadius.addEventListener('input', function () {
+                    const activeObject = canvas.getActiveObject();
+                    if (activeObject && (activeObject.type === 'rect' || activeObject.type === 'ellipse')) {
+                        activeObject.set({
+                            rx: parseInt(this.value),
+                            ry: parseInt(this.value)
+                        });
+                        canvas.renderAll();
+                        saveState();
+                    }
+                });
+
+                // Canvas background color
+                canvasBgColor.addEventListener('change', function () {
+                    canvas.setBackgroundColor(this.value, function () {
+                        canvas.renderAll();
+                        saveState();
+                    });
+                });
+
+                // Canvas size
+                canvasSizeSelect.addEventListener('change', function () {
+                    const size = this.value;
+                    if (size === 'custom') {
+                        const width = prompt('Enter canvas width:', canvas.getWidth());
+                        const height = prompt('Enter canvas height:', canvas.getHeight());
+
+                        if (width && height) {
+                            canvas.setWidth(parseInt(width));
+                            canvas.setHeight(parseInt(height));
+                            canvas.renderAll();
+                        }
+                    } else {
+                        const [width, height] = size.split('x').map(Number);
+                        canvas.setWidth(width);
+                        canvas.setHeight(height);
+                        canvas.renderAll();
+                    }
+                });
+
+                // Zoom controls
+                zoomInBtn.addEventListener('click', zoomIn);
+                zoomOutBtn.addEventListener('click', zoomOut);
+                zoomResetBtn.addEventListener('click', zoomReset);
+
+                // Touch events for mobile
+                canvas.on('touch:gesture', function (e) {
+                    if (e.self) {
+                        if (e.self.state === 'start') {
+                            // Start of gesture
+                        }
+
+                        if (e.self.state === 'change') {
+                            // Pinch zoom
+                            if (e.self.scale !== 1) {
+                                zoomLevel = e.self.scale;
+                                applyZoom();
+                            }
+                        }
+
+                        if (e.self.state === 'end') {
+                            // End of gesture
+                        }
+                    }
+                });
+            }
+
+            // Initialize the app
+            function init() {
+                initEventListeners();
+                saveState(); // Save initial empty state
+
+                // Set initial canvas background
+                canvas.setBackgroundColor(canvasBgColor.value, function () {
+                    canvas.renderAll();
+                });
+            }
+
+            init();
+        });
+    </script>
+</body>
+
+</html>

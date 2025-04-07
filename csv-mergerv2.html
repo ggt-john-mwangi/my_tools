@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced CSV Merger Tool</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .file-drop-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-area.active {
+            border-color: #4f46e5;
+            background-color: #f0f7ff;
+        }
+
+        .file-preview {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .header-mapping-row:hover {
+            background-color: #f8fafc;
+        }
+
+        .custom-separator {
+            width: 50px;
+        }
+
+        .mapping-table {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            background-color: white;
+            z-index: 10;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .column-highlight {
+            background-color: #f0f9ff;
+        }
+
+        .no-mapping {
+            opacity: 0.6;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-6xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Advanced CSV Merger Tool</h1>
+            <p class="text-gray-600">Combine multiple CSV files with advanced header mapping options</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload CSV Files</h2>
+                    <div id="fileDropArea" class="file-drop-area rounded-lg p-8 text-center cursor-pointer mb-4">
+                        <i class="fas fa-file-csv text-4xl text-indigo-500 mb-3"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop CSV files here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supports multiple files</p>
+                        <input type="file" id="fileInput" class="hidden" accept=".csv" multiple>
+                    </div>
+                    <button id="uploadBtn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                        <i class="fas fa-upload mr-2"></i> Upload Files
+                    </button>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Output Settings</h2>
+                    <div class="mb-4">
+                        <label for="outputFilename" class="block text-sm font-medium text-gray-700 mb-1">Output
+                            Filename</label>
+                        <div class="flex">
+                            <input type="text" id="outputFilename"
+                                class="flex-1 rounded-l-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                value="merged_output">
+                            <span
+                                class="inline-flex items-center px-3 rounded-r-md bg-gray-50 text-gray-500 text-sm">.csv</span>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Separator</label>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <input id="defaultSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="," checked>
+                                <label for="defaultSeparator" class="ml-2 block text-sm text-gray-700">Comma ( ,
+                                    )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="semicolonSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value=";">
+                                <label for="semicolonSeparator" class="ml-2 block text-sm text-gray-700">Semicolon ( ;
+                                    )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="tabSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="\t">
+                                <label for="tabSeparator" class="ml-2 block text-sm text-gray-700">Tab ( \t )</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="customSeparator" name="separator" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="custom">
+                                <label for="customSeparator" class="ml-2 block text-sm text-gray-700">Custom:</label>
+                                <input type="text" id="customSeparatorInput"
+                                    class="ml-2 custom-separator rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                    maxlength="1" disabled>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Options</label>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <input id="skipEmpty" type="checkbox"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" checked>
+                                <label for="skipEmpty" class="ml-2 block text-sm text-gray-700">Skip empty rows</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="trimWhitespace" type="checkbox"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" checked>
+                                <label for="trimWhitespace" class="ml-2 block text-sm text-gray-700">Trim
+                                    whitespace</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="mergeBtn"
+                        class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md transition disabled:opacity-50"
+                        disabled>
+                        <i class="fas fa-code-branch mr-2"></i> Merge CSV Files
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="filePreviewSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Uploaded Files</h2>
+            <div id="fileList" class="mb-4">
+                <!-- Files will be listed here -->
+            </div>
+            <div id="filePreview" class="file-preview border rounded-md p-4 hidden">
+                <h3 class="text-lg font-medium mb-2">File Preview</h3>
+                <div id="previewContent" class="overflow-x-auto"></div>
+            </div>
+        </div>
+
+        <div id="headerMappingSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Header Mapping</h2>
+                <div class="flex space-x-2">
+                    <button id="autoMapBtn"
+                        class="bg-blue-100 hover:bg-blue-200 text-blue-800 py-1 px-3 rounded-md text-sm transition">
+                        <i class="fas fa-magic mr-1"></i> Auto-Match
+                    </button>
+                    <button id="resetMappingBtn"
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-3 rounded-md text-sm transition">
+                        <i class="fas fa-undo mr-1"></i> Reset
+                    </button>
+                </div>
+            </div>
+            <p class="text-gray-600 mb-4">Map columns from different files to common output headers. Columns can be left
+                unmapped.</p>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Output Headers</label>
+                <div id="outputHeadersContainer" class="flex flex-wrap gap-2">
+                    <!-- Output headers will be added here -->
+                </div>
+                <div class="mt-2 flex items-center">
+                    <input type="text" id="newOutputHeader" placeholder="New header name"
+                        class="rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                    <button id="addOutputHeaderBtn"
+                        class="ml-2 bg-indigo-100 hover:bg-indigo-200 text-indigo-800 py-1 px-3 rounded-md text-sm transition">
+                        <i class="fas fa-plus mr-1"></i> Add
+                    </button>
+                </div>
+            </div>
+
+            <div class="mapping-table-container border rounded-md overflow-hidden">
+                <div class="sticky-header bg-gray-50 p-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm font-medium text-gray-700">Column Mapping Table</span>
+                        <div class="flex items-center space-x-2">
+                            <span class="text-xs text-gray-500">Highlight:</span>
+                            <select id="highlightColumn"
+                                class="text-xs rounded border-gray-300 focus:border-indigo-500 focus:ring-indigo-500">
+                                <option value="">None</option>
+                                <!-- Columns will be added here -->
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div id="headerMappingContainer" class="overflow-x-auto">
+                    <!-- Header mapping table will be shown here -->
+                </div>
+            </div>
+
+            <div class="mt-4 flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    <i class="fas fa-info-circle mr-1"></i> Gray rows indicate headers that won't be included in the
+                    output
+                </div>
+                <button id="saveMappingBtn"
+                    class="bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                    <i class="fas fa-save mr-2"></i> Save Mapping
+                </button>
+            </div>
+        </div>
+
+        <div id="resultSection" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Merged Result</h2>
+            <div id="resultPreview" class="file-preview border rounded-md p-4 mb-4">
+                <div id="resultContent" class="overflow-x-auto"></div>
+            </div>
+            <div class="flex justify-between items-center">
+                <div class="text-sm text-gray-500">
+                    <span id="rowCount">0</span> rows merged
+                </div>
+                <button id="downloadBtn"
+                    class="bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-md transition">
+                    <i class="fas fa-download mr-2"></i> Download Merged CSV
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const fileDropArea = document.getElementById('fileDropArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const mergeBtn = document.getElementById('mergeBtn');
+            const fileList = document.getElementById('fileList');
+            const filePreviewSection = document.getElementById('filePreviewSection');
+            const headerMappingSection = document.getElementById('headerMappingSection');
+            const headerMappingContainer = document.getElementById('headerMappingContainer');
+            const resultSection = document.getElementById('resultSection');
+            const customSeparatorRadio = document.getElementById('customSeparator');
+            const customSeparatorInput = document.getElementById('customSeparatorInput');
+            const downloadBtn = document.getElementById('downloadBtn');
+            const outputFilename = document.getElementById('outputFilename');
+            const autoMapBtn = document.getElementById('autoMapBtn');
+            const resetMappingBtn = document.getElementById('resetMappingBtn');
+            const outputHeadersContainer = document.getElementById('outputHeadersContainer');
+            const newOutputHeader = document.getElementById('newOutputHeader');
+            const addOutputHeaderBtn = document.getElementById('addOutputHeaderBtn');
+            const highlightColumn = document.getElementById('highlightColumn');
+            const rowCount = document.getElementById('rowCount');
+            const skipEmpty = document.getElementById('skipEmpty');
+            const trimWhitespace = document.getElementById('trimWhitespace');
+
+            // Global variables
+            let uploadedFiles = [];
+            let fileHeaders = {};
+            let mergedData = [];
+            let outputHeaders = [];
+            let headerMapping = {};
+            let separator = ',';
+            let allUniqueHeaders = new Set();
+
+            // Event listeners for separator options
+            document.querySelectorAll('input[name="separator"]').forEach(radio => {
+                radio.addEventListener('change', function () {
+                    if (this.value === 'custom') {
+                        customSeparatorInput.disabled = false;
+                        customSeparatorInput.focus();
+                    } else {
+                        customSeparatorInput.disabled = true;
+                        separator = this.value;
+                    }
+                });
+            });
+
+            customSeparatorInput.addEventListener('input', function () {
+                separator = this.value;
+            });
+
+            // Drag and drop functionality
+            fileDropArea.addEventListener('click', () => fileInput.click());
+
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('active');
+            });
+
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('active');
+            });
+
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('active');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                    handleFiles(fileInput.files);
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    handleFiles(fileInput.files);
+                }
+            });
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+
+            // Handle file processing
+            function handleFiles(files) {
+                uploadedFiles = [];
+                fileHeaders = {};
+                allUniqueHeaders = new Set();
+
+                Array.from(files).forEach(file => {
+                    if (file.type === 'text/csv' || file.name.endsWith('.csv')) {
+                        uploadedFiles.push(file);
+                    }
+                });
+
+                if (uploadedFiles.length === 0) {
+                    alert('Please upload valid CSV files.');
+                    return;
+                }
+
+                displayFileList();
+                parseFiles();
+            }
+
+            // Display list of uploaded files
+            function displayFileList() {
+                fileList.innerHTML = '';
+
+                if (uploadedFiles.length === 0) {
+                    fileList.innerHTML = '<p class="text-gray-500">No files uploaded yet.</p>';
+                    filePreviewSection.classList.add('hidden');
+                    headerMappingSection.classList.add('hidden');
+                    mergeBtn.disabled = true;
+                    return;
+                }
+
+                const list = document.createElement('ul');
+                list.className = 'divide-y divide-gray-200';
+
+                uploadedFiles.forEach((file, index) => {
+                    const listItem = document.createElement('li');
+                    listItem.className = 'py-3 flex justify-between items-center';
+
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'flex items-center';
+
+                    const icon = document.createElement('i');
+                    icon.className = 'fas fa-file-csv text-indigo-500 mr-3';
+
+                    const fileName = document.createElement('span');
+                    fileName.className = 'text-gray-700';
+                    fileName.textContent = file.name;
+
+                    const fileSize = document.createElement('span');
+                    fileSize.className = 'text-sm text-gray-500 ml-2';
+                    fileSize.textContent = `(${(file.size / 1024).toFixed(2)} KB)`;
+
+                    const previewBtn = document.createElement('button');
+                    previewBtn.className = 'text-indigo-600 hover:text-indigo-800 text-sm font-medium';
+                    previewBtn.innerHTML = '<i class="fas fa-eye mr-1"></i> Preview';
+                    previewBtn.addEventListener('click', () => previewFile(index));
+
+                    fileInfo.appendChild(icon);
+                    fileInfo.appendChild(fileName);
+                    fileInfo.appendChild(fileSize);
+
+                    listItem.appendChild(fileInfo);
+                    listItem.appendChild(previewBtn);
+
+                    list.appendChild(listItem);
+                });
+
+                fileList.appendChild(list);
+                filePreviewSection.classList.remove('hidden');
+                mergeBtn.disabled = false;
+            }
+
+            // Preview file content
+            function previewFile(index) {
+                const file = uploadedFiles[index];
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const content = e.target.result;
+                    const rows = content.split('\n').slice(0, 6); // Show first 5 rows
+
+                    const previewTable = document.createElement('table');
+                    previewTable.className = 'min-w-full divide-y divide-gray-200';
+
+                    const thead = document.createElement('thead');
+                    const tbody = document.createElement('tbody');
+
+                    rows.forEach((row, i) => {
+                        const tr = document.createElement('tr');
+                        const cells = row.split(',');
+
+                        cells.forEach(cell => {
+                            const td = document.createElement(i === 0 ? 'th' : 'td');
+                            td.className = i === 0 ? 'px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                                : 'px-4 py-2 text-sm text-gray-700';
+                            td.textContent = cell;
+                            tr.appendChild(td);
+                        });
+
+                        if (i === 0) {
+                            thead.appendChild(tr);
+                        } else {
+                            tbody.appendChild(tr);
+                        }
+                    });
+
+                    previewTable.appendChild(thead);
+                    previewTable.appendChild(tbody);
+
+                    const previewContent = document.getElementById('previewContent');
+                    previewContent.innerHTML = '';
+                    previewContent.appendChild(previewTable);
+
+                    document.getElementById('filePreview').classList.remove('hidden');
+                };
+
+                reader.readAsText(file);
+            }
+
+            // Parse all uploaded files to extract headers
+            function parseFiles() {
+                fileHeaders = {};
+                allUniqueHeaders = new Set();
+
+                uploadedFiles.forEach((file, index) => {
+                    const reader = new FileReader();
+
+                    reader.onload = function (e) {
+                        const content = e.target.result;
+                        const firstLine = content.split('\n')[0];
+                        const headers = firstLine.split(',').map(h => trimWhitespace.checked ? h.trim() : h);
+
+                        fileHeaders[file.name] = headers;
+                        headers.forEach(header => allUniqueHeaders.add(header));
+
+                        // If all files are processed, show header mapping
+                        if (Object.keys(fileHeaders).length === uploadedFiles.length) {
+                            showHeaderMapping();
+                        }
+                    };
+
+                    reader.readAsText(file);
+                });
+            }
+
+            // Display header mapping interface
+            function showHeaderMapping() {
+                headerMappingContainer.innerHTML = '';
+                outputHeadersContainer.innerHTML = '';
+                highlightColumn.innerHTML = '<option value="">None</option>';
+
+                // Initialize output headers if empty
+                if (outputHeaders.length === 0) {
+                    // Try to find common headers
+                    const commonHeaders = findCommonHeaders();
+                    outputHeaders = commonHeaders.length > 0 ? commonHeaders : Array.from(allUniqueHeaders);
+                }
+
+                // Create output header chips
+                renderOutputHeaders();
+
+                // Create header mapping table
+                const table = document.createElement('table');
+                table.className = 'min-w-full divide-y divide-gray-200';
+
+                // Create table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+
+                // Add empty cell for row headers
+                const emptyHeader = document.createElement('th');
+                emptyHeader.className = 'px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                headerRow.appendChild(emptyHeader);
+
+                // Add file name headers
+                Object.keys(fileHeaders).forEach(filename => {
+                    const fileHeader = document.createElement('th');
+                    fileHeader.className = 'px-4 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider';
+                    fileHeader.textContent = filename;
+                    headerRow.appendChild(fileHeader);
+
+                    // Add to highlight dropdown
+                    const option = document.createElement('option');
+                    option.value = filename;
+                    option.textContent = filename;
+                    highlightColumn.appendChild(option);
+                });
+
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+
+                // Create table body
+                const tbody = document.createElement('tbody');
+
+                // Get all unique headers from all files
+                const sortedHeaders = Array.from(allUniqueHeaders).sort();
+
+                // Create a row for each unique header
+                sortedHeaders.forEach(header => {
+                    const row = document.createElement('tr');
+                    row.className = 'header-mapping-row';
+
+                    // Add header name in first column
+                    const headerCell = document.createElement('td');
+                    headerCell.className = 'px-4 py-3 text-sm font-medium text-gray-700 whitespace-nowrap sticky left-0 bg-white';
+                    headerCell.textContent = header;
+                    row.appendChild(headerCell);
+
+                    // Add mapping dropdown for each file
+                    Object.entries(fileHeaders).forEach(([filename, headers]) => {
+                        const cell = document.createElement('td');
+                        cell.className = 'px-4 py-3';
+
+                        // Check if this file has this header
+                        if (headers.includes(header)) {
+                            const select = document.createElement('select');
+                            select.className = 'w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm';
+
+                            // Add empty option
+                            const emptyOption = document.createElement('option');
+                            emptyOption.value = '';
+                            emptyOption.textContent = '-- Skip --';
+                            select.appendChild(emptyOption);
+
+                            // Add output headers as options
+                            outputHeaders.forEach(outputHeader => {
+                                const option = document.createElement('option');
+                                option.value = outputHeader;
+                                option.textContent = outputHeader;
+
+                                // Set selected if this mapping exists
+                                if (headerMapping[filename] && headerMapping[filename][header] === outputHeader) {
+                                    option.selected = true;
+                                } else if (!headerMapping[filename] && outputHeader === header) {
+                                    // Auto-match if header names are the same
+                                    option.selected = true;
+                                    if (!headerMapping[filename]) {
+                                        headerMapping[filename] = {};
+                                    }
+                                    headerMapping[filename][header] = outputHeader;
+                                }
+
+                                select.appendChild(option);
+                            });
+
+                            select.addEventListener('change', () => {
+                                if (!headerMapping[filename]) {
+                                    headerMapping[filename] = {};
+                                }
+
+                                if (select.value === '') {
+                                    delete headerMapping[filename][header];
+                                } else {
+                                    headerMapping[filename][header] = select.value;
+                                }
+
+                                // Update row styling based on whether any mapping exists
+                                updateRowMappingStatus(row);
+                            });
+
+                            cell.appendChild(select);
+                        } else {
+                            cell.className = 'px-4 py-3 text-sm text-gray-400';
+                            cell.textContent = '-- Not in file --';
+                        }
+
+                        row.appendChild(cell);
+                    });
+
+                    // Set initial row styling
+                    updateRowMappingStatus(row);
+
+                    tbody.appendChild(row);
+                });
+
+                table.appendChild(tbody);
+                headerMappingContainer.appendChild(table);
+                headerMappingSection.classList.remove('hidden');
+            }
+
+            // Update row styling based on whether any mapping exists
+            function updateRowMappingStatus(row) {
+                let hasMapping = false;
+
+                // Skip first cell (header name)
+                for (let i = 1; i < row.children.length; i++) {
+                    const cell = row.children[i];
+                    const select = cell.querySelector('select');
+
+                    if (select && select.value !== '') {
+                        hasMapping = true;
+                        break;
+                    }
+                }
+
+                if (hasMapping) {
+                    row.classList.remove('no-mapping');
+                } else {
+                    row.classList.add('no-mapping');
+                }
+            }
+
+            // Find common headers across all files
+            function findCommonHeaders() {
+                if (Object.keys(fileHeaders).length === 0) return [];
+
+                const headerCounts = {};
+
+                // Count occurrences of each header
+                Object.values(fileHeaders).forEach(headers => {
+                    headers.forEach(header => {
+                        if (!headerCounts[header]) {
+                            headerCounts[header] = 0;
+                        }
+                        headerCounts[header]++;
+                    });
+                });
+
+                // Find headers that appear in all files
+                const commonHeaders = [];
+                const fileCount = Object.keys(fileHeaders).length;
+
+                for (const [header, count] of Object.entries(headerCounts)) {
+                    if (count === fileCount) {
+                        commonHeaders.push(header);
+                    }
+                }
+
+                return commonHeaders;
+            }
+
+            // Render output headers as chips
+            function renderOutputHeaders() {
+                outputHeadersContainer.innerHTML = '';
+
+                outputHeaders.forEach((header, index) => {
+                    const chip = document.createElement('div');
+                    chip.className = 'flex items-center bg-indigo-100 text-indigo-800 rounded-full px-3 py-1 text-sm';
+
+                    const span = document.createElement('span');
+                    span.textContent = header;
+                    chip.appendChild(span);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.className = 'ml-1 text-indigo-600 hover:text-indigo-900';
+                    removeBtn.innerHTML = '<i class="fas fa-times"></i>';
+                    removeBtn.addEventListener('click', () => {
+                        outputHeaders.splice(index, 1);
+                        renderOutputHeaders();
+                        showHeaderMapping(); // Refresh mapping table
+                    });
+                    chip.appendChild(removeBtn);
+
+                    outputHeadersContainer.appendChild(chip);
+                });
+            }
+
+            // Add new output header
+            addOutputHeaderBtn.addEventListener('click', function () {
+                const header = newOutputHeader.value.trim();
+                if (header && !outputHeaders.includes(header)) {
+                    outputHeaders.push(header);
+                    newOutputHeader.value = '';
+                    renderOutputHeaders();
+                    showHeaderMapping(); // Refresh mapping table
+                }
+            });
+
+            newOutputHeader.addEventListener('keypress', function (e) {
+                if (e.key === 'Enter') {
+                    addOutputHeaderBtn.click();
+                }
+            });
+
+            // Auto-match headers with similar names
+            autoMapBtn.addEventListener('click', function () {
+                outputHeaders.forEach(outputHeader => {
+                    Object.entries(fileHeaders).forEach(([filename, headers]) => {
+                        headers.forEach(header => {
+                            // Simple similarity check (case insensitive contains)
+                            if (header.toLowerCase().includes(outputHeader.toLowerCase()) ||
+                                outputHeader.toLowerCase().includes(header.toLowerCase())) {
+                                if (!headerMapping[filename]) {
+                                    headerMapping[filename] = {};
+                                }
+                                headerMapping[filename][header] = outputHeader;
+                            }
+                        });
+                    });
+                });
+
+                showHeaderMapping(); // Refresh with new mappings
+            });
+
+            // Reset all mappings
+            resetMappingBtn.addEventListener('click', function () {
+                headerMapping = {};
+                showHeaderMapping(); // Refresh with cleared mappings
+            });
+
+            // Highlight column in mapping table
+            highlightColumn.addEventListener('change', function () {
+                const filename = this.value;
+                if (!filename) {
+                    // Remove all highlighting
+                    document.querySelectorAll('.header-mapping-row td').forEach(cell => {
+                        cell.classList.remove('column-highlight');
+                    });
+                    return;
+                }
+
+                // Find column index for this filename
+                let columnIndex = -1;
+                const headerRow = document.querySelector('.mapping-table thead tr');
+                if (headerRow) {
+                    for (let i = 0; i < headerRow.children.length; i++) {
+                        if (headerRow.children[i].textContent === filename) {
+                            columnIndex = i;
+                            break;
+                        }
+                    }
+                }
+
+                if (columnIndex > 0) {
+                    // Remove all highlighting first
+                    document.querySelectorAll('.header-mapping-row td').forEach(cell => {
+                        cell.classList.remove('column-highlight');
+                    });
+
+                    // Highlight cells in this column
+                    document.querySelectorAll('.header-mapping-row').forEach(row => {
+                        if (row.children.length > columnIndex) {
+                            row.children[columnIndex].classList.add('column-highlight');
+                        }
+                    });
+                }
+            });
+
+            // Save header mapping and prepare for merge
+            document.getElementById('saveMappingBtn').addEventListener('click', function () {
+                mergeFiles();
+            });
+
+            // Merge files based on header mapping
+            function mergeFiles() {
+                mergedData = [];
+
+                // Add headers to merged data
+                mergedData.push(outputHeaders);
+
+                // Process each file
+                Promise.all(uploadedFiles.map(file => {
+                    return new Promise((resolve) => {
+                        const reader = new FileReader();
+
+                        reader.onload = function (e) {
+                            const content = e.target.result;
+                            const lines = content.split('\n');
+                            const headers = lines[0].split(',').map(h => trimWhitespace.checked ? h.trim() : h);
+
+                            // Get mapping for this file
+                            const fileMap = headerMapping[file.name] || {};
+
+                            // Process each data row
+                            for (let i = 1; i < lines.length; i++) {
+                                if (skipEmpty.checked && lines[i].trim() === '') continue;
+
+                                const values = lines[i].split(',');
+                                const row = {};
+
+                                // Map values to output headers
+                                headers.forEach((header, index) => {
+                                    if (fileMap[header]) {
+                                        row[fileMap[header]] = trimWhitespace.checked ? values[index].trim() : values[index];
+                                    }
+                                });
+
+                                // Add to merged data if at least one value is mapped
+                                if (Object.keys(row).length > 0) {
+                                    // Create a new array in the order of outputHeaders
+                                    const orderedRow = outputHeaders.map(header => row[header] || '');
+                                    mergedData.push(orderedRow);
+                                }
+                            }
+
+                            resolve();
+                        };
+
+                        reader.readAsText(file);
+                    });
+                })).then(() => {
+                    // Update row count
+                    rowCount.textContent = mergedData.length - 1; // Subtract header row
+                    showResult();
+                });
+            }
+
+            // Display merged result
+            function showResult() {
+                resultSection.classList.remove('hidden');
+
+                const resultContent = document.getElementById('resultContent');
+                resultContent.innerHTML = '';
+
+                if (mergedData.length === 0) {
+                    resultContent.innerHTML = '<p class="text-gray-500">No data to display. Check your header mappings.</p>';
+                    return;
+                }
+
+                const resultTable = document.createElement('table');
+                resultTable.className = 'min-w-full divide-y divide-gray-200';
+
+                const thead = document.createElement('thead');
+                const tbody = document.createElement('tbody');
+
+                mergedData.forEach((row, i) => {
+                    const tr = document.createElement('tr');
+
+                    row.forEach(cell => {
+                        const td = document.createElement(i === 0 ? 'th' : 'td');
+                        td.className = i === 0 ? 'px-4 py-2 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider'
+                            : 'px-4 py-2 text-sm text-gray-700';
+                        td.textContent = cell;
+                        tr.appendChild(td);
+                    });
+
+                    if (i === 0) {
+                        thead.appendChild(tr);
+                    } else {
+                        tbody.appendChild(tr);
+                    }
+                });
+
+                resultTable.appendChild(thead);
+                resultTable.appendChild(tbody);
+                resultContent.appendChild(resultTable);
+            }
+
+            // Download merged CSV
+            downloadBtn.addEventListener('click', function () {
+                if (mergedData.length === 0) {
+                    alert('No data to download.');
+                    return;
+                }
+
+                // Get the separator
+                let actualSeparator = separator;
+                if (customSeparatorRadio.checked) {
+                    actualSeparator = customSeparatorInput.value || ',';
+                }
+
+                // Convert data to CSV string
+                // const csvContent = mergedData.map(row =>
+                //     row.map(cell => `"${cell.replace(/"/g, '""')}"`).join(actualSeparator)
+                // ).join('\n');
+                const csvContent = mergedData.map(row =>
+                    row.join(actualSeparator) // Just join columns without replacing quotes
+                ).join('\n');
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', `${outputFilename.value || 'merged_output'}.csv`);
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            });
+        });
+    </script>
+</body>
+
+</html>

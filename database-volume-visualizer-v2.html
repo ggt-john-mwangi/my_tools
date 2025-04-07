@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Volume Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .file-drop-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-area.active {
+            border-color: #4f46e5;
+            background-color: #f0f7ff;
+        }
+
+        .grid-stack-item {
+            background: white;
+            border-radius: 0.5rem;
+            box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+        }
+
+        .grid-stack-item-content {
+            padding: 1rem;
+            height: 100%;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+            max-height: 800px;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .progress-bar {
+            height: 6px;
+            border-radius: 3px;
+            background-color: #e5e7eb;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background-color: #4f46e5;
+        }
+
+        .sortable:hover {
+            background-color: #f3f4f6;
+            cursor: pointer;
+        }
+
+        .sort-asc::after {
+            content: " ↑";
+        }
+
+        .sort-desc::after {
+            content: " ↓";
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Database Volume Visualizer</h1>
+            <p class="text-gray-600">Analyze and visualize database table sizes and storage usage</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload Data File</h2>
+                    <div id="fileDropArea" class="file-drop-area rounded-lg p-8 text-center cursor-pointer mb-4">
+                        <i class="fas fa-database text-4xl text-indigo-500 mb-3"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop CSV/JSON file here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supports database volume data with schema/table info</p>
+                        <input type="file" id="fileInput" class="hidden" accept=".csv,.json">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">File Type</label>
+                        <div class="flex items-center space-x-4">
+                            <div class="flex items-center">
+                                <input id="csvType" name="fileType" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="csv" checked>
+                                <label for="csvType" class="ml-2 block text-sm text-gray-700">CSV</label>
+                            </div>
+                            <div class="flex items-center">
+                                <input id="jsonType" name="fileType" type="radio"
+                                    class="h-4 w-4 text-indigo-600 focus:ring-indigo-500" value="json">
+                                <label for="jsonType" class="ml-2 block text-sm text-gray-700">JSON</label>
+                            </div>
+                        </div>
+                    </div>
+                    <button id="uploadBtn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                        <i class="fas fa-upload mr-2"></i> Upload File
+                    </button>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Sample Data Format</h2>
+                    <div class="bg-gray-50 p-4 rounded-md">
+                        <p class="text-sm text-gray-600 mb-2">Expected columns for CSV/JSON:</p>
+                        <ul class="text-sm text-gray-700 space-y-1">
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">SchemaName</span> - Database schema
+                            </li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">TableName</span> - Table name</li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">TotalRows</span> - Row count</li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">TableSizeMB</span> - Total table size
+                            </li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">UsedSpaceMB</span> - Used space</li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">DataSpaceMB</span> - Data space</li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">IndexSpaceMB</span> - Index space</li>
+                            <li><span class="font-mono bg-gray-200 px-1 rounded">TotalSpaceMB</span> - Total allocated
+                                space</li>
+                        </ul>
+                    </div>
+                    <div class="mt-4">
+                        <button id="loadSampleBtn"
+                            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md transition">
+                            <i class="fas fa-vial mr-2"></i> Load Sample Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dataPreviewSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Data Preview</h2>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-600" id="rowCount">0 tables loaded</span>
+                    <button id="toggleTableViewBtn"
+                        class="bg-gray-100 hover:bg-gray-200 text-gray-800 py-1 px-3 rounded-md text-sm transition">
+                        <i class="fas fa-table mr-1"></i> Toggle View
+                    </button>
+                </div>
+            </div>
+
+            <div id="tableView" class="table-container border rounded-md">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="SchemaName">Schema</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="TableName">Table</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="TotalRows">Rows</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="TableSizeMB">Size (MB)</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="UsedSpaceMB">Used (MB)</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="DataSpaceMB">Data (MB)</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="IndexSpaceMB">Index (MB)</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="TotalSpaceMB">Total (MB)</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                Usage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="dataTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="cardView" class="hidden grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                <!-- Cards will be loaded here -->
+            </div>
+        </div>
+
+        <div id="visualizationSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Visualizations</h2>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Largest Tables by Size</h3>
+                    <div class="chart-container">
+                        <canvas id="sizeChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Space Utilization</h3>
+                    <div class="chart-container">
+                        <canvas id="utilizationChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Data vs Index Space</h3>
+                    <div class="chart-container">
+                        <canvas id="dataIndexChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Row Count Distribution</h3>
+                    <div class="chart-container">
+                        <canvas id="rowsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-6 bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                <h3 class="text-lg font-medium mb-3 text-gray-700">Schema Distribution</h3>
+                <div class="chart-container" style="height: 300px;">
+                    <canvas id="schemaChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="summarySection" class="bg-white rounded-lg shadow-md p-6 hidden">
+            <h2 class="text-xl font-semibold mb-4 text-gray-800">Database Summary</h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                <div class="bg-indigo-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-indigo-800 mb-1">Total Tables</h3>
+                    <p class="text-2xl font-bold text-indigo-600" id="totalTables">0</p>
+                </div>
+                <div class="bg-green-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-green-800 mb-1">Total Rows</h3>
+                    <p class="text-2xl font-bold text-green-600" id="totalRows">0</p>
+                </div>
+                <div class="bg-purple-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-purple-800 mb-1">Total Size</h3>
+                    <p class="text-2xl font-bold text-purple-600" id="totalSize">0 MB</p>
+                </div>
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <h3 class="text-sm font-medium text-blue-800 mb-1">Avg Table Size</h3>
+                    <p class="text-2xl font-bold text-blue-600" id="avgSize">0 MB</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Top 10 Largest Tables</h3>
+                    <div id="topTablesList" class="space-y-3">
+                        <!-- Will be populated with JavaScript -->
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200">
+                    <h3 class="text-lg font-medium mb-3 text-gray-700">Space Allocation</h3>
+                    <div class="space-y-2">
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Data Space</span>
+                                <span id="dataSpacePct">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="dataSpaceBar" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Index Space</span>
+                                <span id="indexSpacePct">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="indexSpaceBar"
+                                    style="width: 0%; background-color: #10b981"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="flex justify-between text-sm text-gray-600 mb-1">
+                                <span>Unused Space</span>
+                                <span id="unusedSpacePct">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" id="unusedSpaceBar"
+                                    style="width: 0%; background-color: #6b7280"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const fileDropArea = document.getElementById('fileDropArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const loadSampleBtn = document.getElementById('loadSampleBtn');
+            const dataPreviewSection = document.getElementById('dataPreviewSection');
+            const visualizationSection = document.getElementById('visualizationSection');
+            const summarySection = document.getElementById('summarySection');
+            const toggleTableViewBtn = document.getElementById('toggleTableViewBtn');
+            const tableView = document.getElementById('tableView');
+            const cardView = document.getElementById('cardView');
+            const dataTableBody = document.getElementById('dataTableBody');
+            const rowCount = document.getElementById('rowCount');
+
+            // Chart elements
+            const sizeChartCtx = document.getElementById('sizeChart').getContext('2d');
+            const utilizationChartCtx = document.getElementById('utilizationChart').getContext('2d');
+            const dataIndexChartCtx = document.getElementById('dataIndexChart').getContext('2d');
+            const rowsChartCtx = document.getElementById('rowsChart').getContext('2d');
+            const schemaChartCtx = document.getElementById('schemaChart').getContext('2d');
+
+            // Summary elements
+            const totalTables = document.getElementById('totalTables');
+            const totalRows = document.getElementById('totalRows');
+            const totalSize = document.getElementById('totalSize');
+            const avgSize = document.getElementById('avgSize');
+            const topTablesList = document.getElementById('topTablesList');
+            const dataSpacePct = document.getElementById('dataSpacePct');
+            const indexSpacePct = document.getElementById('indexSpacePct');
+            const unusedSpacePct = document.getElementById('unusedSpacePct');
+            const dataSpaceBar = document.getElementById('dataSpaceBar');
+            const indexSpaceBar = document.getElementById('indexSpaceBar');
+            const unusedSpaceBar = document.getElementById('unusedSpaceBar');
+
+            // Global variables
+            let tableData = [];
+            let currentSortColumn = 'TableSizeMB';
+            let currentSortDirection = 'desc';
+            let charts = [];
+
+            // Initialize charts
+            function initCharts() {
+                // Destroy existing charts
+                charts.forEach(chart => chart.destroy());
+                charts = [];
+
+                // Create new charts
+                charts.push(createSizeChart());
+                charts.push(createUtilizationChart());
+                charts.push(createDataIndexChart());
+                charts.push(createRowsChart());
+                charts.push(createSchemaChart());
+
+                updateSummary();
+            }
+
+            // Create size chart (top 10 largest tables)
+            function createSizeChart() {
+                // Sort data by size and take top 10
+                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+
+                return new Chart(sizeChartCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedData.map(item => `${item.SchemaName}.${item.TableName}`),
+                        datasets: [{
+                            label: 'Table Size (MB)',
+                            data: sortedData.map(item => item.TableSizeMB),
+                            backgroundColor: '#4f46e5',
+                            borderColor: '#4f46e5',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (context) {
+                                        const data = sortedData[context.dataIndex];
+                                        return [
+                                            `Rows: ${data.TotalRows.toLocaleString()}`,
+                                            `Data: ${data.DataSpaceMB.toFixed(2)} MB`,
+                                            `Index: ${data.IndexSpaceMB.toFixed(2)} MB`,
+                                            `Used: ${data.UsedSpaceMB.toFixed(2)} MB`,
+                                            `Total: ${data.TotalSpaceMB.toFixed(2)} MB`
+                                        ].join('\n');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Size (MB)'
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create utilization chart (used vs allocated space)
+            function createUtilizationChart() {
+                // Sort data by size and take top 10
+                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+
+                return new Chart(utilizationChartCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedData.map(item => `${item.SchemaName}.${item.TableName}`),
+                        datasets: [
+                            {
+                                label: 'Used Space (MB)',
+                                data: sortedData.map(item => item.UsedSpaceMB),
+                                backgroundColor: '#4f46e5',
+                                borderColor: '#4f46e5',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Total Space (MB)',
+                                data: sortedData.map(item => item.TotalSpaceMB),
+                                backgroundColor: '#e5e7eb',
+                                borderColor: '#9ca3af',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (context) {
+                                        const data = sortedData[context.dataIndex];
+                                        const utilization = (data.UsedSpaceMB / data.TotalSpaceMB * 100).toFixed(2);
+                                        return `Utilization: ${utilization}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Space (MB)'
+                                }
+                            },
+                            x: {
+                                stacked: true,
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create data vs index space chart
+            function createDataIndexChart() {
+                // Sort data by size and take top 10
+                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+
+                return new Chart(dataIndexChartCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedData.map(item => `${item.SchemaName}.${item.TableName}`),
+                        datasets: [
+                            {
+                                label: 'Data Space (MB)',
+                                data: sortedData.map(item => item.DataSpaceMB),
+                                backgroundColor: '#4f46e5',
+                                borderColor: '#4f46e5',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Index Space (MB)',
+                                data: sortedData.map(item => item.IndexSpaceMB),
+                                backgroundColor: '#10b981',
+                                borderColor: '#10b981',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (context) {
+                                        const data = sortedData[context.dataIndex];
+                                        const indexRatio = (data.IndexSpaceMB / data.DataSpaceMB * 100).toFixed(2);
+                                        return `Index/Data Ratio: ${indexRatio}%`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Space (MB)'
+                                }
+                            },
+                            x: {
+                                stacked: true,
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create row count distribution chart
+            function createRowsChart() {
+                // Sort data by row count and take top 10
+                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+
+                return new Chart(rowsChartCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: sortedData.map(item => `${item.SchemaName}.${item.TableName}`),
+                        datasets: [{
+                            label: 'Row Count',
+                            data: sortedData.map(item => item.TotalRows),
+                            backgroundColor: '#4f46e5',
+                            borderColor: '#4f46e5',
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return context.raw.toLocaleString();
+                                    },
+                                    afterLabel: function (context) {
+                                        const data = sortedData[context.dataIndex];
+                                        return [
+                                            `Size: ${data.TableSizeMB.toFixed(2)} MB`,
+                                            `Data: ${data.DataSpaceMB.toFixed(2)} MB`,
+                                            `Index: ${data.IndexSpaceMB.toFixed(2)} MB`
+                                        ].join('\n');
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Row Count'
+                                },
+                                ticks: {
+                                    callback: function (value) {
+                                        return value.toLocaleString();
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    autoSkip: false
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create schema distribution chart
+            function createSchemaChart() {
+                // Group by schema
+                const schemaGroups = {};
+                tableData.forEach(item => {
+                    if (!schemaGroups[item.SchemaName]) {
+                        schemaGroups[item.SchemaName] = {
+                            count: 0,
+                            totalSize: 0,
+                            totalRows: 0
+                        };
+                    }
+                    schemaGroups[item.SchemaName].count++;
+                    schemaGroups[item.SchemaName].totalSize += item.TableSizeMB;
+                    schemaGroups[item.SchemaName].totalRows += item.TotalRows;
+                });
+
+                const schemas = Object.keys(schemaGroups);
+                const backgroundColors = [
+                    '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                    '#ec4899', '#14b8a6', '#f97316', '#64748b', '#84cc16'
+                ];
+
+                return new Chart(schemaChartCtx, {
+                    type: 'pie',
+                    data: {
+                        labels: schemas,
+                        datasets: [{
+                            label: 'Number of Tables',
+                            data: schemas.map(schema => schemaGroups[schema].count),
+                            backgroundColor: backgroundColors.slice(0, schemas.length),
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'right',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    afterLabel: function (context) {
+                                        const schema = context.label;
+                                        return [
+                                            `Tables: ${schemaGroups[schema].count}`,
+                                            `Total Size: ${schemaGroups[schema].totalSize.toFixed(2)} MB`,
+                                            `Total Rows: ${schemaGroups[schema].totalRows.toLocaleString()}`
+                                        ].join('\n');
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Update summary statistics
+            function updateSummary() {
+                if (tableData.length === 0) return;
+
+                // Basic counts
+                totalTables.textContent = tableData.length.toLocaleString();
+
+                // Row counts
+                const totalRowCount = tableData.reduce((sum, item) => sum + item.TotalRows, 0);
+                totalRows.textContent = totalRowCount.toLocaleString();
+
+                // Size metrics
+                const totalSizeMB = tableData.reduce((sum, item) => sum + item.TableSizeMB, 0);
+                const avgSizeMB = totalSizeMB / tableData.length;
+                totalSize.textContent = totalSizeMB.toFixed(2) + ' MB';
+                avgSize.textContent = avgSizeMB.toFixed(2) + ' MB';
+
+                // Space allocation
+                const totalDataSpace = tableData.reduce((sum, item) => sum + item.DataSpaceMB, 0);
+                const totalIndexSpace = tableData.reduce((sum, item) => sum + item.IndexSpaceMB, 0);
+                const totalUsedSpace = tableData.reduce((sum, item) => sum + item.UsedSpaceMB, 0);
+                const totalAllocatedSpace = tableData.reduce((sum, item) => sum + item.TotalSpaceMB, 0);
+
+                const dataPct = (totalDataSpace / totalAllocatedSpace * 100).toFixed(1);
+                const indexPct = (totalIndexSpace / totalAllocatedSpace * 100).toFixed(1);
+                const unusedPct = ((totalAllocatedSpace - totalUsedSpace) / totalAllocatedSpace * 100).toFixed(1);
+
+                dataSpacePct.textContent = dataPct + '%';
+                indexSpacePct.textContent = indexPct + '%';
+                unusedSpacePct.textContent = unusedPct + '%';
+
+                dataSpaceBar.style.width = dataPct + '%';
+                indexSpaceBar.style.width = indexPct + '%';
+                unusedSpaceBar.style.width = unusedPct + '%';
+
+                // Top 10 largest tables
+                const topTables = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, 10);
+                topTablesList.innerHTML = '';
+
+                topTables.forEach(table => {
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between items-center';
+
+                    const name = document.createElement('div');
+                    name.className = 'text-sm font-medium text-gray-700 truncate';
+                    name.textContent = `${table.SchemaName}.${table.TableName}`;
+                    name.style.maxWidth = '180px';
+
+                    const size = document.createElement('div');
+                    size.className = 'text-sm text-gray-500';
+                    size.textContent = `${table.TableSizeMB.toFixed(2)} MB`;
+
+                    const progress = document.createElement('div');
+                    progress.className = 'w-24';
+
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar';
+
+                    const progressFill = document.createElement('div');
+                    progressFill.className = 'progress-fill';
+                    progressFill.style.width = `${(table.TableSizeMB / topTables[0].TableSizeMB * 100).toFixed(1)}%`;
+
+                    progressBar.appendChild(progressFill);
+                    progress.appendChild(progressBar);
+
+                    item.appendChild(name);
+                    item.appendChild(progress);
+                    item.appendChild(size);
+
+                    topTablesList.appendChild(item);
+                });
+            }
+
+            // Render data table
+            function renderDataTable() {
+                dataTableBody.innerHTML = '';
+
+                // Sort data
+                const sortedData = [...tableData].sort((a, b) => {
+                    if (currentSortDirection === 'asc') {
+                        return a[currentSortColumn] > b[currentSortColumn] ? 1 : -1;
+                    } else {
+                        return a[currentSortColumn] < b[currentSortColumn] ? 1 : -1;
+                    }
+                });
+
+                sortedData.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    // Schema
+                    const schemaCell = document.createElement('td');
+                    schemaCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700';
+                    schemaCell.textContent = item.SchemaName;
+                    row.appendChild(schemaCell);
+
+                    // Table
+                    const tableCell = document.createElement('td');
+                    tableCell.className = 'px-4 py-2 whitespace-nowrap text-sm font-medium text-gray-900';
+                    tableCell.textContent = item.TableName;
+                    row.appendChild(tableCell);
+
+                    // Rows
+                    const rowsCell = document.createElement('td');
+                    rowsCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    rowsCell.textContent = item.TotalRows?.toLocaleString();
+                    row.appendChild(rowsCell);
+
+                    // Table Size
+                    const sizeCell = document.createElement('td');
+                    sizeCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    sizeCell.textContent = item.TableSizeMB?.toFixed(2);
+                    row.appendChild(sizeCell);
+
+                    // Used Space
+                    const usedCell = document.createElement('td');
+                    usedCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    usedCell.textContent = item.UsedSpaceMB?.toFixed(2);
+                    row.appendChild(usedCell);
+
+                    // Data Space
+                    const dataCell = document.createElement('td');
+                    dataCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    dataCell.textContent = item.DataSpaceMB?.toFixed(2);
+                    row.appendChild(dataCell);
+
+                    // Index Space
+                    const indexCell = document.createElement('td');
+                    indexCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    indexCell.textContent = item.IndexSpaceMB?.toFixed(2);
+                    row.appendChild(indexCell);
+
+                    // Total Space
+                    const totalCell = document.createElement('td');
+                    totalCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    totalCell.textContent = item.TotalSpaceMB?.toFixed(2);
+                    row.appendChild(totalCell);
+
+                    // Usage
+                    const usageCell = document.createElement('td');
+                    usageCell.className = 'px-4 py-2 whitespace-nowrap';
+
+                    const usageDiv = document.createElement('div');
+                    usageDiv.className = 'flex items-center';
+
+                    const usageBar = document.createElement('div');
+                    usageBar.className = 'w-full';
+
+                    const usageBarOuter = document.createElement('div');
+                    usageBarOuter.className = 'progress-bar';
+
+                    const usageBarInner = document.createElement('div');
+                    usageBarInner.className = 'progress-fill';
+                    const usagePct = (item.UsedSpaceMB / item.TotalSpaceMB * 100).toFixed(1);
+                    usageBarInner.style.width = `${usagePct}%`;
+
+                    const usageText = document.createElement('div');
+                    usageText.className = 'text-xs text-gray-500 text-center';
+                    usageText.textContent = `${usagePct}%`;
+
+                    usageBarOuter.appendChild(usageBarInner);
+                    usageBar.appendChild(usageBarOuter);
+                    usageDiv.appendChild(usageBar);
+                    usageDiv.appendChild(usageText);
+                    usageCell.appendChild(usageDiv);
+                    row.appendChild(usageCell);
+
+                    dataTableBody.appendChild(row);
+                });
+
+                // Update row count
+                rowCount.textContent = `${tableData.length} tables loaded`;
+            }
+
+            // Render card view
+            function renderCardView() {
+                cardView.innerHTML = '';
+
+                // Sort data
+                const sortedData = [...tableData].sort((a, b) => {
+                    if (currentSortDirection === 'asc') {
+                        return a[currentSortColumn] > b[currentSortColumn] ? 1 : -1;
+                    } else {
+                        return a[currentSortColumn] < b[currentSortColumn] ? 1 : -1;
+                    }
+                });
+
+                sortedData.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'bg-white rounded-lg shadow-sm border border-gray-200 p-4';
+
+                    // Card header
+                    const header = document.createElement('div');
+                    header.className = 'flex justify-between items-start mb-2';
+
+                    const title = document.createElement('h3');
+                    title.className = 'text-sm font-medium text-gray-900 truncate';
+                    title.textContent = `${item.SchemaName}.${item.TableName}`;
+                    title.style.maxWidth = '180px';
+
+                    const size = document.createElement('span');
+                    size.className = 'text-sm font-medium text-indigo-600';
+                    size.textContent = `${item.TableSizeMB?.toFixed(2)} MB`;
+
+                    header.appendChild(title);
+                    header.appendChild(size);
+                    card.appendChild(header);
+
+                    // Rows
+                    const rows = document.createElement('div');
+                    rows.className = 'text-xs text-gray-500 mb-1';
+                    rows.textContent = `Rows: ${item.TotalRows?.toLocaleString()}`;
+                    card.appendChild(rows);
+
+                    // Space usage
+                    const usage = document.createElement('div');
+                    usage.className = 'mb-2';
+
+                    const usageText = document.createElement('div');
+                    usageText.className = 'flex justify-between text-xs text-gray-500 mb-1';
+
+                    const usedText = document.createElement('span');
+                    usedText.textContent = `Used: ${item.UsedSpaceMB?.toFixed(2)} MB`;
+
+                    const totalText = document.createElement('span');
+                    totalText.textContent = `Total: ${item.TotalSpaceMB?.toFixed(2)} MB`;
+
+                    usageText.appendChild(usedText);
+                    usageText.appendChild(totalText);
+                    usage.appendChild(usageText);
+
+                    const usageBar = document.createElement('div');
+                    usageBar.className = 'progress-bar';
+
+                    const usageFill = document.createElement('div');
+                    usageFill.className = 'progress-fill';
+                    const usagePct = (item.UsedSpaceMB / item.TotalSpaceMB * 100)?.toFixed(1);
+                    usageFill.style.width = `${usagePct}%`;
+
+                    usageBar.appendChild(usageFill);
+                    usage.appendChild(usageBar);
+                    card.appendChild(usage);
+
+                    // Space breakdown
+                    const breakdown = document.createElement('div');
+                    breakdown.className = 'grid grid-cols-2 gap-2 text-xs';
+
+                    const dataSpace = document.createElement('div');
+                    dataSpace.className = 'bg-indigo-50 text-indigo-700 p-1 rounded text-center';
+                    dataSpace.textContent = `Data: ${item.DataSpaceMB?.toFixed(2)} MB`;
+
+                    const indexSpace = document.createElement('div');
+                    indexSpace.className = 'bg-green-50 text-green-700 p-1 rounded text-center';
+                    indexSpace.textContent = `Index: ${item.IndexSpaceMB?.toFixed(2)} MB`;
+
+                    breakdown.appendChild(dataSpace);
+                    breakdown.appendChild(indexSpace);
+                    card.appendChild(breakdown);
+
+                    cardView.appendChild(card);
+                });
+            }
+
+            // Handle file upload
+            function handleFileUpload(file) {
+                const fileType = document.querySelector('input[name="fileType"]:checked').value;
+
+                if (fileType === 'csv') {
+                    parseCSV(file);
+                } else {
+                    parseJSON(file);
+                }
+            }
+
+            // Parse CSV file
+            function parseCSV(file) {
+                Papa.parse(file, {
+                    header: true,
+                    complete: function (results) {
+                        processData(results.data);
+                    },
+                    error: function (error) {
+                        alert('Error parsing CSV file: ' + error.message);
+                    }
+                });
+            }
+
+            // Parse JSON file
+            function parseJSON(file) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        processData(data);
+                    } catch (error) {
+                        alert('Error parsing JSON file: ' + error.message);
+                    }
+                };
+
+                reader.onerror = function () {
+                    alert('Error reading file');
+                };
+
+                reader.readAsText(file);
+            }
+
+            // Process parsed data
+            function processData(data) {
+                // Reset data
+                tableData = [];
+
+                // Validate required columns
+                const requiredColumns = ['SchemaName', 'TableName', 'TotalRows', 'TableSizeMB',
+                    'UsedSpaceMB', 'DataSpaceMB', 'IndexSpaceMB', 'TotalSpaceMB'];
+
+                if (data.length === 0) {
+                    alert('No data found in file');
+                    return;
+                }
+
+                const firstItem = data[0];
+                const missingColumns = requiredColumns.filter(col => !(col in firstItem));
+
+                if (missingColumns.length > 0) {
+                    alert(`Missing required columns: ${missingColumns.join(', ')}`);
+                    return;
+                }
+
+                // Process each item
+                data.forEach(item => {
+                    // Convert numeric fields
+                    const numericFields = ['TotalRows', 'TableSizeMB', 'UsedSpaceMB', 'DataSpaceMB', 'IndexSpaceMB', 'TotalSpaceMB'];
+                    numericFields.forEach(field => {
+                        if (typeof item[field] === 'string') {
+                            item[field] = parseFloat(item[field]);
+                        }
+                    });
+
+                    // Add to table data
+                    tableData.push(item);
+                });
+
+                // Show data preview
+                dataPreviewSection.classList.remove('hidden');
+                visualizationSection.classList.remove('hidden');
+                summarySection.classList.remove('hidden');
+
+                // Render views
+                renderDataTable();
+                renderCardView();
+
+                // Initialize charts
+                initCharts();
+            }
+
+            // Load sample data
+            function loadSampleData() {
+                const sampleData = [
+                    {
+                        SchemaName: "dbo",
+                        TableName: "ResponseHistoryValues",
+                        TotalRows: 97500688,
+                        TableSizeMB: 7226.35,
+                        UsedSpaceMB: 7219.38,
+                        DataSpaceMB: 7201.16,
+                        IndexSpaceMB: 18.21,
+                        TotalSpaceMB: 7226.35
+                    },
+                    {
+                        SchemaName: "dbo",
+                        TableName: "Customers",
+                        TotalRows: 1250000,
+                        TableSizeMB: 1850.25,
+                        UsedSpaceMB: 1842.50,
+                        DataSpaceMB: 1500.75,
+                        IndexSpaceMB: 341.75,
+                        TotalSpaceMB: 1850.25
+                    },
+                    {
+                        SchemaName: "sales",
+                        TableName: "Orders",
+                        TotalRows: 8500000,
+                        TableSizeMB: 3200.50,
+                        UsedSpaceMB: 3150.25,
+                        DataSpaceMB: 2800.00,
+                        IndexSpaceMB: 350.25,
+                        TotalSpaceMB: 3200.50
+                    },
+                    {
+                        SchemaName: "sales",
+                        TableName: "OrderDetails",
+                        TotalRows: 42500000,
+                        TableSizeMB: 4800.75,
+                        UsedSpaceMB: 4750.50,
+                        DataSpaceMB: 4200.25,
+                        IndexSpaceMB: 550.25,
+                        TotalSpaceMB: 4800.75
+                    },
+                    {
+                        SchemaName: "inventory",
+                        TableName: "Products",
+                        TotalRows: 250000,
+                        TableSizeMB: 850.00,
+                        UsedSpaceMB: 825.50,
+                        DataSpaceMB: 700.25,
+                        IndexSpaceMB: 125.25,
+                        TotalSpaceMB: 850.00
+                    },
+                    {
+                        SchemaName: "inventory",
+                        TableName: "InventoryLog",
+                        TotalRows: 12500000,
+                        TableSizeMB: 2200.25,
+                        UsedSpaceMB: 2150.75,
+                        DataSpaceMB: 1900.50,
+                        IndexSpaceMB: 250.25,
+                        TotalSpaceMB: 2200.25
+                    },
+                    {
+                        SchemaName: "hr",
+                        TableName: "Employees",
+                        TotalRows: 5000,
+                        TableSizeMB: 125.75,
+                        UsedSpaceMB: 120.25,
+                        DataSpaceMB: 100.00,
+                        IndexSpaceMB: 20.25,
+                        TotalSpaceMB: 125.75
+                    },
+                    {
+                        SchemaName: "hr",
+                        TableName: "EmployeeHistory",
+                        TotalRows: 2500000,
+                        TableSizeMB: 750.50,
+                        UsedSpaceMB: 725.25,
+                        DataSpaceMB: 600.75,
+                        IndexSpaceMB: 125.50,
+                        TotalSpaceMB: 750.50
+                    },
+                    {
+                        SchemaName: "logs",
+                        TableName: "SystemLogs",
+                        TotalRows: 5000000,
+                        TableSizeMB: 1500.25,
+                        UsedSpaceMB: 1450.75,
+                        DataSpaceMB: 1400.00,
+                        IndexSpaceMB: 50.25,
+                        TotalSpaceMB: 1500.25
+                    },
+                    {
+                        SchemaName: "logs",
+                        TableName: "AuditLogs",
+                        TotalRows: 2500000,
+                        TableSizeMB: 800.00,
+                        UsedSpaceMB: 775.50,
+                        DataSpaceMB: 750.25,
+                        IndexSpaceMB: 25.25,
+                        TotalSpaceMB: 800.00
+                    }
+                ];
+
+                tableData = sampleData;
+
+                // Show data preview
+                dataPreviewSection.classList.remove('hidden');
+                visualizationSection.classList.remove('hidden');
+                summarySection.classList.remove('hidden');
+
+                // Render views
+                renderDataTable();
+                renderCardView();
+
+                // Initialize charts
+                initCharts();
+            }
+
+            // Event listeners
+            fileDropArea.addEventListener('click', () => fileInput.click());
+
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('active');
+            });
+
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('active');
+            });
+
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('active');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    handleFileUpload(fileInput.files[0]);
+                }
+            });
+
+            uploadBtn.addEventListener('click', () => fileInput.click());
+
+            loadSampleBtn.addEventListener('click', loadSampleData);
+
+            toggleTableViewBtn.addEventListener('click', function () {
+                tableView.classList.toggle('hidden');
+                cardView.classList.toggle('hidden');
+
+                if (tableView.classList.contains('hidden')) {
+                    this.innerHTML = '<i class="fas fa-list mr-1"></i> Table View';
+                } else {
+                    this.innerHTML = '<i class="fas fa-table mr-1"></i> Card View';
+                }
+            });
+
+            // Sortable table headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function () {
+                    const column = this.getAttribute('data-column');
+
+                    // Reset sort indicators on all headers
+                    document.querySelectorAll('.sortable').forEach(h => {
+                        h.classList.remove('sort-asc', 'sort-desc');
+                    });
+
+                    // If clicking the same column, toggle direction
+                    if (currentSortColumn === column) {
+                        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+                    } else {
+                        // Default to descending for new columns
+                        currentSortColumn = column;
+                        currentSortDirection = 'desc';
+                    }
+
+                    // Add sort indicator
+                    this.classList.add(currentSortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+
+                    // Re-render views
+                    renderDataTable();
+                    renderCardView();
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

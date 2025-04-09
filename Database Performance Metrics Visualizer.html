@@ -1,0 +1,1444 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Performance Metrics Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .file-drop-area {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+
+        .file-drop-area.active {
+            border-color: #4f46e5;
+            background-color: #f0f7ff;
+        }
+
+        .metric-card {
+            transition: all 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .chart-container {
+            position: relative;
+            height: 100%;
+            width: 100%;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            top: 0;
+            height: 100%;
+            width: 2px;
+            background-color: #ef4444;
+            z-index: 10;
+        }
+
+        .timeline-label {
+            position: absolute;
+            top: 10px;
+            transform: translateX(-50%);
+            background-color: #ef4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            z-index: 11;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .sortable:hover {
+            background-color: #f3f4f6;
+            cursor: pointer;
+        }
+
+        .sort-asc::after {
+            content: " ↑";
+        }
+
+        .sort-desc::after {
+            content: " ↓";
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8 max-w-7xl">
+        <header class="mb-8 text-center">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Database Performance Metrics Visualizer</h1>
+            <p class="text-gray-600">Analyze and compare database performance metrics over time</p>
+        </header>
+
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Upload Metrics Files</h2>
+                    <div id="fileDropArea" class="file-drop-area rounded-lg p-8 text-center cursor-pointer mb-4">
+                        <i class="fas fa-file-upload text-4xl text-indigo-500 mb-3"></i>
+                        <p class="text-gray-600 mb-2">Drag & drop CSV files here or click to browse</p>
+                        <p class="text-sm text-gray-500">Supports multiple files for time-based comparison</p>
+                        <input type="file" id="fileInput" class="hidden" accept=".csv" multiple>
+                    </div>
+                    <div class="mb-4">
+                        <label for="timelineEvent" class="block text-sm font-medium text-gray-700 mb-1">Timeline Event
+                            (optional)</label>
+                        <input type="text" id="timelineEvent" placeholder="e.g., 'Archiving completed'"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <div class="mb-4">
+                        <label for="eventDate" class="block text-sm font-medium text-gray-700 mb-1">Event Date
+                            (optional)</label>
+                        <input type="datetime-local" id="eventDate"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500">
+                    </div>
+                    <button id="uploadBtn"
+                        class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-2 px-4 rounded-md transition">
+                        <i class="fas fa-upload mr-2"></i> Process Files
+                    </button>
+                </div>
+
+                <div>
+                    <h2 class="text-xl font-semibold mb-4 text-gray-800">Supported Metrics</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div class="metric-card bg-indigo-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-indigo-100 text-indigo-600 mr-3">
+                                    <i class="fas fa-microchip"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-indigo-800">Resource Utilization</h3>
+                                    <p class="text-xs text-indigo-600">CPU, I/O, Memory</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card bg-green-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-green-100 text-green-600 mr-3">
+                                    <i class="fas fa-search"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-green-800">Query Performance</h3>
+                                    <p class="text-xs text-green-600">Execution stats</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card bg-purple-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-purple-100 text-purple-600 mr-3">
+                                    <i class="fas fa-users"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-purple-800">Active Sessions</h3>
+                                    <p class="text-xs text-purple-600">User activity</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card bg-blue-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-blue-100 text-blue-600 mr-3">
+                                    <i class="fas fa-chart-line"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-blue-800">Query Store</h3>
+                                    <p class="text-xs text-blue-600">Historical trends</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card bg-yellow-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-yellow-100 text-yellow-600 mr-3">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-yellow-800">Wait Stats</h3>
+                                    <p class="text-xs text-yellow-600">Bottlenecks</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="metric-card bg-red-50 rounded-lg p-4">
+                            <div class="flex items-center">
+                                <div class="p-2 rounded-full bg-red-100 text-red-600 mr-3">
+                                    <i class="fas fa-database"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-red-800">Index Health</h3>
+                                    <p class="text-xs text-red-600">Fragmentation</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-4">
+                        <button id="loadSampleBtn"
+                            class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 py-2 px-4 rounded-md transition">
+                            <i class="fas fa-vial mr-2"></i> Load Sample Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="fileInfoSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Uploaded Files</h2>
+                <div class="flex items-center space-x-2">
+                    <span class="text-sm text-gray-600" id="fileCount">0 files loaded</span>
+                </div>
+            </div>
+            <div id="fileList" class="space-y-2">
+                <!-- Files will be listed here -->
+            </div>
+        </div>
+
+        <div id="visualizationSection" class="hidden">
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Resource Utilization Over Time</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="cpuTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="cpuTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">CPU Usage (%)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="ioTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="ioTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Data I/O Usage (%)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="ioChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="logTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="logTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Log Write Usage (%)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="logChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="memoryTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="memoryTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Memory Usage (%)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="memoryChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Query Performance Over Time</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="durationTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="durationTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Average Query Duration (ms)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="durationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="cpuTimeTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="cpuTimeTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Average CPU Time (ms)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="cpuTimeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="logicalReadsTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="logicalReadsTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Average Logical Reads</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="logicalReadsChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="physicalReadsTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="physicalReadsTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Average Physical Reads</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="physicalReadsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Wait Statistics Over Time</h2>
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="waitStatsTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="waitStatsTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Top Wait Types (ms)</h3>
+                        <div class="chart-container" style="height: 400px;">
+                            <canvas id="waitStatsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Index Health Over Time</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="fragmentationTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="fragmentationTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Average Index Fragmentation (%)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="fragmentationChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="indexUsageTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="indexUsageTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Index Usage (Seeks/Scans)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="indexUsageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Database Size Over Time</h2>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="dbSizeTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="dbSizeTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Database Size (MB)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="dbSizeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow-sm p-4 border border-gray-200 relative">
+                        <div id="logSizeTimelineMarker" class="timeline-marker hidden"></div>
+                        <div id="logSizeTimelineLabel" class="timeline-label hidden"></div>
+                        <h3 class="text-lg font-medium mb-3 text-gray-700">Log Size (MB)</h3>
+                        <div class="chart-container" style="height: 300px;">
+                            <canvas id="logSizeChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="rawDataSection" class="bg-white rounded-lg shadow-md p-6 mb-8 hidden">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-semibold text-gray-800">Raw Data</h2>
+                <div class="flex items-center space-x-2">
+                    <button id="exportDataBtn"
+                        class="bg-indigo-600 hover:bg-indigo-700 text-white py-1 px-3 rounded-md text-sm transition">
+                        <i class="fas fa-download mr-1"></i> Export Data
+                    </button>
+                </div>
+            </div>
+            <div class="table-container border rounded-md">
+                <table class="min-w-full divide-y divide-gray-200">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="CaptureTime">Timestamp</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="MetricType">Metric Type</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="MetricName">Metric Name</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="MetricValue">Value</th>
+                            <th scope="col"
+                                class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sortable"
+                                data-column="FileName">Source File</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rawDataTableBody" class="bg-white divide-y divide-gray-200">
+                        <!-- Data will be loaded here -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // DOM elements
+            const fileDropArea = document.getElementById('fileDropArea');
+            const fileInput = document.getElementById('fileInput');
+            const uploadBtn = document.getElementById('uploadBtn');
+            const loadSampleBtn = document.getElementById('loadSampleBtn');
+            const fileInfoSection = document.getElementById('fileInfoSection');
+            const visualizationSection = document.getElementById('visualizationSection');
+            const rawDataSection = document.getElementById('rawDataSection');
+            const fileList = document.getElementById('fileList');
+            const fileCount = document.getElementById('fileCount');
+            const rawDataTableBody = document.getElementById('rawDataTableBody');
+            const exportDataBtn = document.getElementById('exportDataBtn');
+            const timelineEvent = document.getElementById('timelineEvent');
+            const eventDate = document.getElementById('eventDate');
+
+            // Chart elements
+            const cpuChartCtx = document.getElementById('cpuChart').getContext('2d');
+            const ioChartCtx = document.getElementById('ioChart').getContext('2d');
+            const logChartCtx = document.getElementById('logChart').getContext('2d');
+            const memoryChartCtx = document.getElementById('memoryChart').getContext('2d');
+            const durationChartCtx = document.getElementById('durationChart').getContext('2d');
+            const cpuTimeChartCtx = document.getElementById('cpuTimeChart').getContext('2d');
+            const logicalReadsChartCtx = document.getElementById('logicalReadsChart').getContext('2d');
+            const physicalReadsChartCtx = document.getElementById('physicalReadsChart').getContext('2d');
+            const waitStatsChartCtx = document.getElementById('waitStatsChart').getContext('2d');
+            const fragmentationChartCtx = document.getElementById('fragmentationChart').getContext('2d');
+            const indexUsageChartCtx = document.getElementById('indexUsageChart').getContext('2d');
+            const dbSizeChartCtx = document.getElementById('dbSizeChart').getContext('2d');
+            const logSizeChartCtx = document.getElementById('logSizeChart').getContext('2d');
+
+            // Timeline markers
+            const cpuTimelineMarker = document.getElementById('cpuTimelineMarker');
+            const cpuTimelineLabel = document.getElementById('cpuTimelineLabel');
+            const ioTimelineMarker = document.getElementById('ioTimelineMarker');
+            const ioTimelineLabel = document.getElementById('ioTimelineLabel');
+            const logTimelineMarker = document.getElementById('logTimelineMarker');
+            const logTimelineLabel = document.getElementById('logTimelineLabel');
+            const memoryTimelineMarker = document.getElementById('memoryTimelineMarker');
+            const memoryTimelineLabel = document.getElementById('memoryTimelineLabel');
+            const durationTimelineMarker = document.getElementById('durationTimelineMarker');
+            const durationTimelineLabel = document.getElementById('durationTimelineLabel');
+            const cpuTimeTimelineMarker = document.getElementById('cpuTimeTimelineMarker');
+            const cpuTimeTimelineLabel = document.getElementById('cpuTimeTimelineLabel');
+            const logicalReadsTimelineMarker = document.getElementById('logicalReadsTimelineMarker');
+            const logicalReadsTimelineLabel = document.getElementById('logicalReadsTimelineLabel');
+            const physicalReadsTimelineMarker = document.getElementById('physicalReadsTimelineMarker');
+            const physicalReadsTimelineLabel = document.getElementById('physicalReadsTimelineLabel');
+            const waitStatsTimelineMarker = document.getElementById('waitStatsTimelineMarker');
+            const waitStatsTimelineLabel = document.getElementById('waitStatsTimelineLabel');
+            const fragmentationTimelineMarker = document.getElementById('fragmentationTimelineMarker');
+            const fragmentationTimelineLabel = document.getElementById('fragmentationTimelineLabel');
+            const indexUsageTimelineMarker = document.getElementById('indexUsageTimelineMarker');
+            const indexUsageTimelineLabel = document.getElementById('indexUsageTimelineLabel');
+            const dbSizeTimelineMarker = document.getElementById('dbSizeTimelineMarker');
+            const dbSizeTimelineLabel = document.getElementById('dbSizeTimelineLabel');
+            const logSizeTimelineMarker = document.getElementById('logSizeTimelineMarker');
+            const logSizeTimelineLabel = document.getElementById('logSizeTimelineLabel');
+
+            // Global variables
+            let allMetricsData = [];
+            let charts = [];
+            let eventTimestamp = null;
+            let eventLabel = '';
+
+            // Initialize charts
+            function initCharts() {
+                // Destroy existing charts
+                charts.forEach(chart => chart.destroy());
+                charts = [];
+
+                // Create new charts
+                charts.push(createResourceChart('cpuChart', 'CPU Usage', '%', 'avg_cpu_percent'));
+                charts.push(createResourceChart('ioChart', 'Data I/O Usage', '%', 'avg_data_io_percent'));
+                charts.push(createResourceChart('logChart', 'Log Write Usage', '%', 'avg_log_write_percent'));
+                charts.push(createResourceChart('memoryChart', 'Memory Usage', '%', 'avg_memory_usage_percent'));
+
+                charts.push(createQueryPerformanceChart('durationChart', 'Average Query Duration', 'ms', 'avg_duration'));
+                charts.push(createQueryPerformanceChart('cpuTimeChart', 'Average CPU Time', 'ms', 'avg_cpu_time'));
+                charts.push(createQueryPerformanceChart('logicalReadsChart', 'Average Logical Reads', 'reads', 'avg_logical_io_reads'));
+                charts.push(createQueryPerformanceChart('physicalReadsChart', 'Average Physical Reads', 'reads', 'avg_physical_io_reads'));
+
+                charts.push(createWaitStatsChart());
+                charts.push(createIndexHealthChart('fragmentationChart', 'Average Index Fragmentation', '%', 'avg_fragmentation_in_percent'));
+                charts.push(createIndexUsageChart());
+
+                charts.push(createDbSizeChart('dbSizeChart', 'Database Size', 'MB', 'ROWS'));
+                charts.push(createDbSizeChart('logSizeChart', 'Log Size', 'MB', 'LOG'));
+
+                // Update timeline markers if event is set
+                if (eventTimestamp) {
+                    updateTimelineMarkers();
+                }
+            }
+
+            // Create resource utilization chart
+            function createResourceChart(chartId, label, unit, metricField) {
+                const ctx = document.getElementById(chartId).getContext('2d');
+                const data = prepareChartData('Resource Utilization', metricField);
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.y} ${unit}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: unit
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create query performance chart
+            function createQueryPerformanceChart(chartId, label, unit, metricField) {
+                const ctx = document.getElementById(chartId).getContext('2d');
+                const data = prepareChartData('Query Performance', metricField);
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.y} ${unit}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: unit
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create wait statistics chart
+            function createWaitStatsChart() {
+                const ctx = waitStatsChartCtx;
+
+                // Group wait stats by type and capture time
+                const waitStats = {};
+                allMetricsData.forEach(item => {
+                    if (item.MetricType === 'Wait Statistics') {
+                        if (!waitStats[item.MetricName]) {
+                            waitStats[item.MetricName] = [];
+                        }
+                        waitStats[item.MetricName].push({
+                            x: new Date(item.CaptureTime),
+                            y: item.MetricValue,
+                            file: item.FileName
+                        });
+                    }
+                });
+
+                // Sort wait types by total wait time
+                const sortedWaitTypes = Object.keys(waitStats).sort((a, b) => {
+                    const sumA = waitStats[a].reduce((sum, point) => sum + point.y, 0);
+                    const sumB = waitStats[b].reduce((sum, point) => sum + point.y, 0);
+                    return sumB - sumA;
+                }).slice(0, 10); // Limit to top 10
+
+                const datasets = sortedWaitTypes.map((waitType, index) => {
+                    const color = getColor(index);
+                    return {
+                        label: waitType,
+                        data: waitStats[waitType],
+                        borderColor: color,
+                        backgroundColor: color,
+                        tension: 0.1,
+                        pointRadius: 3
+                    };
+                });
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.y} ms`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Wait Time (ms)'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create index health chart
+            function createIndexHealthChart(chartId, label, unit, metricField) {
+                const ctx = document.getElementById(chartId).getContext('2d');
+                const data = prepareChartData('Index Health', metricField);
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        labels: data.labels,
+                        datasets: data.datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.y} ${unit}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: unit
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create index usage chart
+            function createIndexUsageChart() {
+                const ctx = indexUsageChartCtx;
+
+                // Group index usage by type and capture time
+                const indexUsage = {
+                    'Seeks': [],
+                    'Scans': [],
+                    'Lookups': [],
+                    'Updates': []
+                };
+
+                allMetricsData.forEach(item => {
+                    if (item.MetricType === 'Index Usage') {
+                        const date = new Date(item.CaptureTime);
+
+                        if (item.MetricName === 'user_seeks') {
+                            indexUsage['Seeks'].push({ x: date, y: item.MetricValue, file: item.FileName });
+                        } else if (item.MetricName === 'user_scans') {
+                            indexUsage['Scans'].push({ x: date, y: item.MetricValue, file: item.FileName });
+                        } else if (item.MetricName === 'user_lookups') {
+                            indexUsage['Lookups'].push({ x: date, y: item.MetricValue, file: item.FileName });
+                        } else if (item.MetricName === 'user_updates') {
+                            indexUsage['Updates'].push({ x: date, y: item.MetricValue, file: item.FileName });
+                        }
+                    }
+                });
+
+                const datasets = [
+                    {
+                        label: 'Seeks',
+                        data: indexUsage['Seeks'],
+                        borderColor: '#4f46e5',
+                        backgroundColor: '#4f46e5',
+                        tension: 0.1,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Scans',
+                        data: indexUsage['Scans'],
+                        borderColor: '#10b981',
+                        backgroundColor: '#10b981',
+                        tension: 0.1,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Lookups',
+                        data: indexUsage['Lookups'],
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        tension: 0.1,
+                        pointRadius: 3
+                    },
+                    {
+                        label: 'Updates',
+                        data: indexUsage['Updates'],
+                        borderColor: '#ef4444',
+                        backgroundColor: '#ef4444',
+                        tension: 0.1,
+                        pointRadius: 3
+                    }
+                ];
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.y}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Count'
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Create database size chart
+            function createDbSizeChart(chartId, label, unit, fileType) {
+                const ctx = document.getElementById(chartId).getContext('2d');
+
+                // Filter data for this file type
+                const sizeData = allMetricsData.filter(item =>
+                    item.MetricType === 'Database Size' &&
+                    item.MetricName === 'type_desc' &&
+                    item.MetricValue === fileType
+                ).map(item => {
+                    return {
+                        x: new Date(item.CaptureTime),
+                        y: item.MetricValue2, // SizeMB is stored in MetricValue2
+                        file: item.FileName
+                    };
+                });
+
+                const color = fileType === 'ROWS' ? '#4f46e5' : '#10b981';
+
+                return new Chart(ctx, {
+                    type: 'line',
+                    data: {
+                        datasets: [{
+                            label: label,
+                            data: sizeData,
+                            borderColor: color,
+                            backgroundColor: color,
+                            tension: 0.1,
+                            pointRadius: 3
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${label}: ${context.raw.y} ${unit}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                type: 'time',
+                                time: {
+                                    tooltipFormat: 'MMM d, yyyy HH:mm',
+                                    displayFormats: {
+                                        hour: 'MMM d HH:mm'
+                                    }
+                                },
+                                title: {
+                                    display: true,
+                                    text: 'Time'
+                                }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: unit
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Prepare chart data from metrics
+            function prepareChartData(metricType, metricField) {
+                // Filter data for this metric type and field
+                const filteredData = allMetricsData.filter(item =>
+                    item.MetricType === metricType &&
+                    item.MetricName === metricField
+                );
+
+                // Group by file name
+                const dataByFile = {};
+                filteredData.forEach(item => {
+                    if (!dataByFile[item.FileName]) {
+                        dataByFile[item.FileName] = [];
+                    }
+                    dataByFile[item.FileName].push({
+                        x: new Date(item.CaptureTime),
+                        y: item.MetricValue,
+                        file: item.FileName
+                    });
+                });
+
+                // Create datasets for each file
+                const datasets = Object.keys(dataByFile).map((fileName, index) => {
+                    const color = getColor(index);
+                    return {
+                        label: fileName,
+                        data: dataByFile[fileName],
+                        borderColor: color,
+                        backgroundColor: color,
+                        tension: 0.1,
+                        pointRadius: 3
+                    };
+                });
+
+                // Sort data points by time for each dataset
+                datasets.forEach(dataset => {
+                    dataset.data.sort((a, b) => a.x - b.x);
+                });
+
+                return {
+                    labels: filteredData.map(item => new Date(item.CaptureTime)),
+                    datasets: datasets
+                };
+            }
+
+            // Get a color from a predefined palette based on index
+            function getColor(index) {
+                const colors = [
+                    '#4f46e5', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6',
+                    '#ec4899', '#14b8a6', '#f97316', '#64748b', '#84cc16',
+                    '#3b82f6', '#a855f7', '#06b6d4', '#d946ef', '#0ea5e9'
+                ];
+                return colors[index % colors.length];
+            }
+
+            // Update timeline markers on all charts
+            function updateTimelineMarkers() {
+                if (!eventTimestamp) return;
+
+                const chartsWithMarkers = [
+                    { chart: cpuChart, marker: cpuTimelineMarker, label: cpuTimelineLabel },
+                    { chart: ioChart, marker: ioTimelineMarker, label: ioTimelineLabel },
+                    { chart: logChart, marker: logTimelineMarker, label: logTimelineLabel },
+                    { chart: memoryChart, marker: memoryTimelineMarker, label: memoryTimelineLabel },
+                    { chart: durationChart, marker: durationTimelineMarker, label: durationTimelineLabel },
+                    { chart: cpuTimeChart, marker: cpuTimeTimelineMarker, label: cpuTimeTimelineLabel },
+                    { chart: logicalReadsChart, marker: logicalReadsTimelineMarker, label: logicalReadsTimelineLabel },
+                    { chart: physicalReadsChart, marker: physicalReadsTimelineMarker, label: physicalReadsTimelineLabel },
+                    { chart: waitStatsChart, marker: waitStatsTimelineMarker, label: waitStatsTimelineLabel },
+                    { chart: fragmentationChart, marker: fragmentationTimelineMarker, label: fragmentationTimelineLabel },
+                    { chart: indexUsageChart, marker: indexUsageTimelineMarker, label: indexUsageTimelineLabel },
+                    { chart: dbSizeChart, marker: dbSizeTimelineMarker, label: dbSizeTimelineLabel },
+                    { chart: logSizeChart, marker: logSizeTimelineMarker, label: logSizeTimelineLabel }
+                ];
+
+                chartsWithMarkers.forEach(({ chart, marker, label }) => {
+                    if (!chart) return;
+
+                    const chartArea = chart.canvas.parentNode;
+                    const chartRect = chartArea.getBoundingClientRect();
+                    const chartWidth = chartRect.width;
+
+                    // Calculate position of the event timestamp
+                    const timeScale = chart.scales.x;
+                    if (!timeScale) return;
+
+                    const min = timeScale.min;
+                    const max = timeScale.max;
+                    const range = max - min;
+
+                    const eventPos = (eventTimestamp - min) / range;
+                    const markerPos = eventPos * chartWidth;
+
+                    // Update marker position
+                    marker.style.left = `${markerPos}px`;
+                    marker.classList.remove('hidden');
+
+                    // Update label position and text
+                    label.style.left = `${markerPos}px`;
+                    label.textContent = eventLabel;
+                    label.classList.remove('hidden');
+                });
+            }
+
+            // Process uploaded files
+            function processFiles(files) {
+                if (!files || files.length === 0) return;
+
+                allMetricsData = [];
+                const filePromises = [];
+
+                // Process each file
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    filePromises.push(parseCSV(file));
+                }
+
+                // When all files are processed
+                Promise.all(filePromises).then(() => {
+                    // Show file info
+                    displayFileInfo(files);
+
+                    // Show visualization and raw data sections
+                    visualizationSection.classList.remove('hidden');
+                    rawDataSection.classList.remove('hidden');
+
+                    // Render raw data table
+                    renderRawDataTable();
+
+                    // Initialize charts
+                    initCharts();
+                }).catch(error => {
+                    console.error('Error processing files:', error);
+                    alert('Error processing files. Please check the console for details.');
+                });
+            }
+
+            // Parse CSV file and extract metrics
+            function parseCSV(file) {
+                return new Promise((resolve, reject) => {
+                    Papa.parse(file, {
+                        header: true,
+                        complete: function (results) {
+                            try {
+                                const fileName = file.name;
+                                const data = results.data;
+
+                                // Determine metric type based on columns present
+                                let metricType = 'Unknown';
+                                if (data.length > 0) {
+                                    const firstRow = data[0];
+
+                                    if ('avg_cpu_percent' in firstRow) {
+                                        metricType = 'Resource Utilization';
+                                    } else if ('avg_duration' in firstRow) {
+                                        metricType = 'Query Performance';
+                                    } else if ('wait_type' in firstRow) {
+                                        metricType = 'Wait Statistics';
+                                    } else if ('avg_fragmentation_in_percent' in firstRow) {
+                                        metricType = 'Index Health';
+                                    } else if ('user_seeks' in firstRow) {
+                                        metricType = 'Index Usage';
+                                    } else if ('type_desc' in firstRow) {
+                                        metricType = 'Database Size';
+                                    }
+                                }
+
+                                // Process each row in the CSV
+                                data.forEach(row => {
+                                    const captureTime = row.CaptureTime || row.end_time || row.creation_time || row.last_execution_time || row.first_execution_time;
+
+                                    if (!captureTime) {
+                                        console.warn('Skipping row with no timestamp:', row);
+                                        return;
+                                    }
+
+                                    // Handle different metric types
+                                    if (metricType === 'Resource Utilization') {
+                                        // Resource metrics
+                                        addMetric(captureTime, metricType, 'avg_cpu_percent', row.avg_cpu_percent, fileName);
+                                        addMetric(captureTime, metricType, 'avg_data_io_percent', row.avg_data_io_percent, fileName);
+                                        addMetric(captureTime, metricType, 'avg_log_write_percent', row.avg_log_write_percent, fileName);
+                                        addMetric(captureTime, metricType, 'avg_memory_usage_percent', row.avg_memory_usage_percent, fileName);
+                                    }
+                                    else if (metricType === 'Query Performance') {
+                                        // Query performance metrics
+                                        addMetric(captureTime, metricType, 'avg_duration', row.avg_duration, fileName);
+                                        addMetric(captureTime, metricType, 'avg_cpu_time', row.avg_cpu_time, fileName);
+                                        addMetric(captureTime, metricType, 'avg_logical_io_reads', row.avg_logical_io_reads, fileName);
+                                        addMetric(captureTime, metricType, 'avg_physical_io_reads', row.avg_physical_io_reads, fileName);
+                                    }
+                                    else if (metricType === 'Wait Statistics') {
+                                        // Wait statistics
+                                        addMetric(captureTime, metricType, row.wait_type, row.wait_time_ms, fileName);
+                                    }
+                                    else if (metricType === 'Index Health') {
+                                        // Index fragmentation
+                                        addMetric(captureTime, metricType, 'avg_fragmentation_in_percent', row.avg_fragmentation_in_percent, fileName);
+                                    }
+                                    else if (metricType === 'Index Usage') {
+                                        // Index usage stats
+                                        addMetric(captureTime, metricType, 'user_seeks', row.user_seeks, fileName);
+                                        addMetric(captureTime, metricType, 'user_scans', row.user_scans, fileName);
+                                        addMetric(captureTime, metricType, 'user_lookups', row.user_lookups, fileName);
+                                        addMetric(captureTime, metricType, 'user_updates', row.user_updates, fileName);
+                                    }
+                                    else if (metricType === 'Database Size') {
+                                        // Database size
+                                        addMetric(captureTime, metricType, 'type_desc', row.type_desc, fileName, row.size * 8 / 1024);
+                                    }
+                                });
+
+                                resolve();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        },
+                        error: function (error) {
+                            reject(error);
+                        }
+                    });
+                });
+            }
+
+            // Add a metric to the global data array
+            function addMetric(captureTime, metricType, metricName, metricValue, fileName, metricValue2 = null) {
+                if (metricValue === null || metricValue === undefined) return;
+
+                allMetricsData.push({
+                    CaptureTime: captureTime,
+                    MetricType: metricType,
+                    MetricName: metricName,
+                    MetricValue: parseFloat(metricValue),
+                    MetricValue2: metricValue2 !== null ? parseFloat(metricValue2) : null,
+                    FileName: fileName
+                });
+            }
+
+            // Display information about uploaded files
+            function displayFileInfo(files) {
+                fileList.innerHTML = '';
+
+                files.forEach(file => {
+                    const fileItem = document.createElement('div');
+                    fileItem.className = 'flex items-center justify-between p-3 bg-gray-50 rounded-md';
+
+                    const fileInfo = document.createElement('div');
+                    fileInfo.className = 'flex items-center';
+
+                    const fileIcon = document.createElement('div');
+                    fileIcon.className = 'p-2 rounded-full bg-indigo-100 text-indigo-600 mr-3';
+                    fileIcon.innerHTML = '<i class="fas fa-file-csv"></i>';
+
+                    const fileName = document.createElement('div');
+                    fileName.className = 'text-sm font-medium text-gray-700 truncate';
+                    fileName.textContent = file.name;
+                    fileName.style.maxWidth = '300px';
+
+                    fileInfo.appendChild(fileIcon);
+                    fileInfo.appendChild(fileName);
+
+                    const fileSize = document.createElement('div');
+                    fileSize.className = 'text-xs text-gray-500';
+                    fileSize.textContent = formatFileSize(file.size);
+
+                    fileItem.appendChild(fileInfo);
+                    fileItem.appendChild(fileSize);
+
+                    fileList.appendChild(fileItem);
+                });
+
+                fileCount.textContent = `${files.length} file${files.length !== 1 ? 's' : ''} loaded`;
+                fileInfoSection.classList.remove('hidden');
+            }
+
+            // Format file size in KB or MB
+            function formatFileSize(bytes) {
+                if (bytes < 1024) return bytes + ' bytes';
+                else if (bytes < 1048576) return (bytes / 1024).toFixed(1) + ' KB';
+                else return (bytes / 1048576).toFixed(1) + ' MB';
+            }
+
+            // Render raw data table
+            function renderRawDataTable() {
+                rawDataTableBody.innerHTML = '';
+
+                // Sort data by timestamp
+                const sortedData = [...allMetricsData].sort((a, b) => {
+                    return new Date(a.CaptureTime) - new Date(b.CaptureTime);
+                });
+
+                // Limit to 1000 rows for performance
+                const displayData = sortedData.slice(0, 1000);
+
+                displayData.forEach(item => {
+                    const row = document.createElement('tr');
+
+                    // Timestamp
+                    const timeCell = document.createElement('td');
+                    timeCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700';
+                    timeCell.textContent = new Date(item.CaptureTime).toLocaleString();
+                    row.appendChild(timeCell);
+
+                    // Metric Type
+                    const typeCell = document.createElement('td');
+                    typeCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700';
+                    typeCell.textContent = item.MetricType;
+                    row.appendChild(typeCell);
+
+                    // Metric Name
+                    const nameCell = document.createElement('td');
+                    nameCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700';
+                    nameCell.textContent = item.MetricName;
+                    row.appendChild(nameCell);
+
+                    // Metric Value
+                    const valueCell = document.createElement('td');
+                    valueCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 text-right';
+                    valueCell.textContent = item.MetricValue;
+                    row.appendChild(valueCell);
+
+                    // File Name
+                    const fileCell = document.createElement('td');
+                    fileCell.className = 'px-4 py-2 whitespace-nowrap text-sm text-gray-700 truncate';
+                    fileCell.textContent = item.FileName;
+                    fileCell.style.maxWidth = '200px';
+                    row.appendChild(fileCell);
+
+                    rawDataTableBody.appendChild(row);
+                });
+            }
+
+            // Export data as CSV
+            function exportData() {
+                // Prepare CSV content
+                let csvContent = "CaptureTime,MetricType,MetricName,MetricValue,FileName\n";
+
+                allMetricsData.forEach(item => {
+                    csvContent += `"${item.CaptureTime}","${item.MetricType}","${item.MetricName}",${item.MetricValue},"${item.FileName}"\n`;
+                });
+
+                // Create download link
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.setAttribute('href', url);
+                link.setAttribute('download', 'database_metrics_export.csv');
+                link.style.visibility = 'hidden';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            }
+
+            // Load sample data
+            function loadSampleData() {
+                // Create sample file objects
+                const sampleFiles = [
+                    {
+                        name: 'ResourceStats_20230601_090000.csv',
+                        content: `CaptureTime,end_time,avg_cpu_percent,avg_data_io_percent,avg_log_write_percent,avg_memory_usage_percent
+2023-06-01 09:00:00,2023-06-01 09:00:00,45.2,32.1,18.7,65.3
+2023-06-01 09:15:00,2023-06-01 09:15:00,48.7,35.6,20.3,67.1
+2023-06-01 09:30:00,2023-06-01 09:30:00,52.1,38.9,22.5,69.8`
+                    },
+                    {
+                        name: 'ResourceStats_20230601_100000.csv',
+                        content: `CaptureTime,end_time,avg_cpu_percent,avg_data_io_percent,avg_log_write_percent,avg_memory_usage_percent
+2023-06-01 10:00:00,2023-06-01 10:00:00,55.3,42.7,25.1,72.4
+2023-06-01 10:15:00,2023-06-01 10:15:00,60.2,48.3,28.7,75.6
+2023-06-01 10:30:00,2023-06-01 10:30:00,58.9,45.2,26.8,73.9`
+                    },
+                    {
+                        name: 'QueryPerformance_20230601_090000.csv',
+                        content: `CaptureTime,avg_duration,avg_cpu_time,avg_logical_io_reads,avg_physical_io_reads
+2023-06-01 09:00:00,125.7,98.3,4521,125
+2023-06-01 09:15:00,132.4,105.2,4875,142
+2023-06-01 09:30:00,140.8,112.7,5123,158`
+                    },
+                    {
+                        name: 'QueryPerformance_20230601_100000.csv',
+                        content: `CaptureTime,avg_duration,avg_cpu_time,avg_logical_io_reads,avg_physical_io_reads
+2023-06-01 10:00:00,152.3,125.6,5874,203
+2023-06-01 10:15:00,145.9,118.3,5421,187
+2023-06-01 10:30:00,138.2,110.5,4987,165`
+                    },
+                    {
+                        name: 'WaitStats_20230601_090000.csv',
+                        content: `CaptureTime,wait_type,wait_time_ms,max_wait_time_ms,signal_wait_time_ms,waiting_tasks_count
+2023-06-01 09:00:00,LCK_M_X,1250,350,250,15
+2023-06-01 09:00:00,PAGEIOLATCH_SH,980,220,180,12
+2023-06-01 09:00:00,WRITELOG,750,180,120,8`
+                    },
+                    {
+                        name: 'WaitStats_20230601_100000.csv',
+                        content: `CaptureTime,wait_type,wait_time_ms,max_wait_time_ms,signal_wait_time_ms,waiting_tasks_count
+2023-06-01 10:00:00,LCK_M_X,1420,420,320,18
+2023-06-01 10:00:00,PAGEIOLATCH_SH,1120,280,240,15
+2023-06-01 10:00:00,WRITELOG,890,240,180,10`
+                    },
+                    {
+                        name: 'IndexHealth_20230601_090000.csv',
+                        content: `CaptureTime,TableName,IndexName,index_type_desc,avg_fragmentation_in_percent
+2023-06-01 09:00:00,Customers,PK_Customers,CLUSTERED INDEX,12.5
+2023-06-01 09:00:00,Orders,IX_Orders_CustomerID,NONCLUSTERED INDEX,8.7
+2023-06-01 09:00:00,OrderDetails,PK_OrderDetails,CLUSTERED INDEX,15.2`
+                    },
+                    {
+                        name: 'IndexHealth_20230601_100000.csv',
+                        content: `CaptureTime,TableName,IndexName,index_type_desc,avg_fragmentation_in_percent
+2023-06-01 10:00:00,Customers,PK_Customers,CLUSTERED INDEX,14.8
+2023-06-01 10:00:00,Orders,IX_Orders_CustomerID,NONCLUSTERED INDEX,10.3
+2023-06-01 10:00:00,OrderDetails,PK_OrderDetails,CLUSTERED INDEX,18.6`
+                    },
+                    {
+                        name: 'DatabaseSize_20230601_090000.csv',
+                        content: `CaptureTime,DatabaseName,type_desc,size
+2023-06-01 09:00:00,MyDatabase,ROWS,125000
+2023-06-01 09:00:00,MyDatabase,LOG,25000`
+                    },
+                    {
+                        name: 'DatabaseSize_20230601_100000.csv',
+                        content: `CaptureTime,DatabaseName,type_desc,size
+2023-06-01 10:00:00,MyDatabase,ROWS,128000
+2023-06-01 10:00:00,MyDatabase,LOG,26000`
+                    }
+                ];
+
+                // Convert to File objects
+                const fileObjects = sampleFiles.map(file => {
+                    return new File([file.content], file.name, { type: 'text/csv' });
+                });
+
+                // Process the sample files
+                processFiles(fileObjects);
+
+                // Set a sample timeline event
+                timelineEvent.value = 'Archiving completed';
+                eventDate.value = '2023-06-01T10:00:00';
+
+                // Update event timestamp and label
+                eventTimestamp = new Date('2023-06-01T10:00:00').getTime();
+                eventLabel = timelineEvent.value;
+
+                // Update timeline markers
+                updateTimelineMarkers();
+            }
+
+            // Event listeners
+            fileDropArea.addEventListener('click', () => fileInput.click());
+
+            fileDropArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.add('active');
+            });
+
+            fileDropArea.addEventListener('dragleave', () => {
+                fileDropArea.classList.remove('active');
+            });
+
+            fileDropArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                fileDropArea.classList.remove('active');
+                if (e.dataTransfer.files.length) {
+                    fileInput.files = e.dataTransfer.files;
+                }
+            });
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length) {
+                    // Clear any previous event markers
+                    eventTimestamp = null;
+                    eventLabel = '';
+
+                    // Hide timeline markers
+                    document.querySelectorAll('.timeline-marker, .timeline-label').forEach(el => {
+                        el.classList.add('hidden');
+                    });
+
+                    // Process the files
+                    processFiles(fileInput.files);
+                }
+            });
+
+            uploadBtn.addEventListener('click', () => {
+                if (fileInput.files.length) {
+                    processFiles(fileInput.files);
+                } else {
+                    fileInput.click();
+                }
+            });
+
+            loadSampleBtn.addEventListener('click', loadSampleData);
+
+            exportDataBtn.addEventListener('click', exportData);
+
+            timelineEvent.addEventListener('change', function () {
+                eventLabel = this.value;
+                if (eventTimestamp) {
+                    updateTimelineMarkers();
+                }
+            });
+
+            eventDate.addEventListener('change', function () {
+                if (this.value) {
+                    eventTimestamp = new Date(this.value).getTime();
+                    if (eventLabel) {
+                        updateTimelineMarkers();
+                    }
+                } else {
+                    eventTimestamp = null;
+                    // Hide timeline markers
+                    document.querySelectorAll('.timeline-marker, .timeline-label').forEach(el => {
+                        el.classList.add('hidden');
+                    });
+                }
+            });
+
+            // Sortable table headers
+            document.querySelectorAll('.sortable').forEach(header => {
+                header.addEventListener('click', function () {
+                    const column = this.getAttribute('data-column');
+
+                    // Reset sort indicators on all headers
+                    document.querySelectorAll('.sortable').forEach(h => {
+                        h.classList.remove('sort-asc', 'sort-desc');
+                    });
+
+                    // If clicking the same column, toggle direction
+                    if (this.classList.contains('sort-asc')) {
+                        this.classList.remove('sort-asc');
+                        this.classList.add('sort-desc');
+                    } else if (this.classList.contains('sort-desc')) {
+                        this.classList.remove('sort-desc');
+                    } else {
+                        // Default to ascending for new columns
+                        this.classList.add('sort-asc');
+                    }
+
+                    // Re-render table with new sort
+                    renderRawDataTable();
+                });
+            });
+        });
+    </script>
+</body>
+
+</html>

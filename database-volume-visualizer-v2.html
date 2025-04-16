@@ -364,7 +364,10 @@
             // Create size chart (top 10 largest tables)
             function createSizeChart() {
                 // Sort data by size and take top 10
-                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                // const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                const sortedData = [...tableData]
+                    .sort((a, b) => b.TableSizeMB - a.TableSizeMB)
+                    .slice(0, Math.min(50, tableData.length > 100 ? tableData.length / 10 : 25));
 
                 return new Chart(sizeChartCtx, {
                     type: 'bar',
@@ -421,7 +424,10 @@
             // Create utilization chart (used vs allocated space)
             function createUtilizationChart() {
                 // Sort data by size and take top 10
-                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                // const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                const sortedData = [...tableData]
+                    .sort((a, b) => b.TableSizeMB - a.TableSizeMB)
+                    .slice(0, Math.min(50, tableData.length > 100 ? tableData.length / 10 : 25));
 
                 return new Chart(utilizationChartCtx, {
                     type: 'bar',
@@ -480,7 +486,10 @@
             // Create data vs index space chart
             function createDataIndexChart() {
                 // Sort data by size and take top 10
-                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                // const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                const sortedData = [...tableData]
+                    .sort((a, b) => b.TableSizeMB - a.TableSizeMB)
+                    .slice(0, Math.min(50, tableData.length > 100 ? tableData.length / 10 : 25));
 
                 return new Chart(dataIndexChartCtx, {
                     type: 'bar',
@@ -539,7 +548,10 @@
             // Create row count distribution chart
             function createRowsChart() {
                 // Sort data by row count and take top 10
-                const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                // const sortedData = [...tableData].sort((a, b) => b.TableSizeMB - a.TableSizeMB).slice(0, tableData.length / 10);
+                const sortedData = [...tableData]
+                    .sort((a, b) => b.TableSizeMB - a.TableSizeMB)
+                    .slice(0, Math.min(50, tableData.length > 100 ? tableData.length / 10 : 25));
 
                 return new Chart(rowsChartCtx, {
                     type: 'bar',

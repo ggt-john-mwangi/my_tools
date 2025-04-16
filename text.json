@@ -1,0 +1,653 @@
+{
+    "invocationId": "a51611be-65b6-4709-a1d0-6e65cb433730",
+    "traceContext": {
+        "traceparent": "00-6c05a6a93fac6078569bbfb407f78267-6928ca0d80fa939e-00",
+        "tracestate": "",
+        "attributes": {}
+    },
+    "executionContext": {
+        "invocationId": "a51611be-65b6-4709-a1d0-6e65cb433730",
+        "functionName": "QuiqWebhook",
+        "functionDirectory": "/home/site/wwwroot/QuiqWebhook",
+        "retryContext": null
+    },
+    "bindings": null,
+    "bindingData": {
+        "invocationId": "a51611be-65b6-4709-a1d0-6e65cb433730",
+        "botSession": {},
+        "conversation": {
+            "agentInfo": {
+                "humanAgentMostMessages": null,
+                "lastHumanAgent": null,
+                "mostMessages": "customer.ambassador.bot"
+            },
+            "appleMessages": null,
+            "autoSummary": null,
+            "collaboration": null,
+            "contactPointId": "acl-safe",
+            "currentTenantHandle": {
+                "handle": "+18333537233",
+                "platform": "SMS"
+            },
+            "custom": {
+                "quiqWebhookInfo": "not-testmode",
+                "env": 0,
+                "count": 0
+            },
+            "customer": {
+                "custom": null,
+                "email": null,
+                "firstName": "Gary",
+                "lastName": "Winkler",
+                "phoneNumber": "+16789067972",
+                "preferredLanguage": null
+            },
+            "customerHandle": "+16789067972",
+            "customerPlatform": "SMS",
+            "customerSentiment": {
+                "last5LinearWeightedAverage": 0
+            },
+            "endTime": null,
+            "events": [
+                {
+                    "type": "requested",
+                    "timestamp": 1707844600440,
+                    "triggeredBy": {
+                        "id": null,
+                        "type": "system"
+                    }
+                },
+                {
+                    "type": "queueChanged",
+                    "newQueue": "routing-bot",
+                    "oldQueue": null,
+                    "timestamp": 1707844601288,
+                    "triggeredBy": {
+                        "id": null,
+                        "type": "system"
+                    }
+                },
+                {
+                    "type": "ownerChanged",
+                    "newOwner": "routing-bot",
+                    "oldOwner": null,
+                    "timestamp": 1707844601707,
+                    "triggeredBy": {
+                        "id": "routing-bot",
+                        "type": "user"
+                    }
+                },
+                {
+                    "type": "ownerChanged",
+                    "newOwner": "customer.ambassador.bot",
+                    "oldOwner": "routing-bot",
+                    "timestamp": 1707844601857,
+                    "triggeredBy": {
+                        "id": "routing-bot",
+                        "type": "user"
+                    }
+                },
+                {
+                    "type": "activated",
+                    "timestamp": 1707844602441,
+                    "triggeredBy": {
+                        "id": "customer.ambassador.bot",
+                        "type": "user"
+                    }
+                }
+            ],
+            "goals": null,
+            "googleMessages": null,
+            "id": "cid.1707844600721.be3be717fb7ba6e560",
+            "instagram": null,
+            "integrations": [],
+            "integrationsData": {},
+            "invitee": null,
+            "lastConversation": null,
+            "lastNotification": null,
+            "members": {
+                "customer.ambassador.bot": {
+                    "attributes": [
+                        "owner"
+                    ]
+                }
+            },
+            "messages": [
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "+16789067972",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": true,
+                    "id": "mid.1707844600381.69b972dcfeab9facb7",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "SMS",
+                    "text": "SURVEY",
+                    "times": null,
+                    "timestamp": 1707844600362,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844602461.86d90270df180329ae",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "Welcome to the Customer Ambassador Program! The only completely text-based survey program that allows you to earn incentives for giving your feedback to participating businesses!",
+                    "times": null,
+                    "timestamp": 1707844602441,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844603224.ddad4790c8539f45cc",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": {
+                        "displayPreferences": {
+                            "listInteractionIcon": {
+                                "type": "default-list"
+                            },
+                            "listSubtitle": null,
+                            "listTitle": null,
+                            "overrides": {}
+                        },
+                        "prompt": null,
+                        "replies": [
+                            {
+                                "aliases": null,
+                                "directives": null,
+                                "implicitResponse": null,
+                                "label": null,
+                                "postbackData": null,
+                                "text": "Start"
+                            },
+                            {
+                                "aliases": null,
+                                "directives": null,
+                                "implicitResponse": null,
+                                "label": null,
+                                "postbackData": null,
+                                "text": "Exit"
+                            }
+                        ],
+                        "suppressFreeTextResponses": false
+                    },
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "Since it's your first time here we need to get you registered. You will only need to do this once. Are you ready to get started?",
+                    "times": null,
+                    "timestamp": 1707844603222,
+                    "trackLinks": null,
+                    "transcriptHints": {
+                        "description": "Start or Exit",
+                        "heading1": "Since it's your first time here we need to get you registered. You will only need to do this once. Are you ready to get started?",
+                        "heading2": null,
+                        "icon": {
+                            "builtInIcon": "list"
+                        }
+                    }
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "+16789067972",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": true,
+                    "id": "mid.1707844615709.b3da41f5cf9ebce4b7",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "SMS",
+                    "text": "Start",
+                    "times": null,
+                    "timestamp": 1707844615694,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844616083.048777c15468670d38",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "We will send three separate messages asking for your FIRST name, LAST name, and EMAIL address. Here we go!",
+                    "times": null,
+                    "timestamp": 1707844616079,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844616840.cd50153b40bc089f8e",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "Please provide your FIRST name.",
+                    "times": null,
+                    "timestamp": 1707844616835,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "+16789067972",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": true,
+                    "id": "mid.1707844629938.11e2990d92cae1dac7",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "SMS",
+                    "text": "Gary",
+                    "times": null,
+                    "timestamp": 1707844629923,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844630780.b5eb596fdcb055edec",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "Please provide your LAST name.",
+                    "times": null,
+                    "timestamp": 1707844630777,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "+16789067972",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": true,
+                    "id": "mid.1707844639572.1f47f7ffa2a45477d3",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "SMS",
+                    "text": "Winkler",
+                    "times": null,
+                    "timestamp": 1707844639558,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "customer.ambassador.bot",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": false,
+                    "id": "mid.1707844640365.64c210c3e493c556b4",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "Quiq",
+                    "text": "Please provide your EMAIL.",
+                    "times": null,
+                    "timestamp": 1707844640359,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                },
+                {
+                    "assets": [],
+                    "auth": null,
+                    "author": "+16789067972",
+                    "card": null,
+                    "carousel": null,
+                    "directives": null,
+                    "externalAssets": [],
+                    "fromCustomer": true,
+                    "id": "mid.1707844658775.6aaf05df29831c2c4a",
+                    "inResponseTo": null,
+                    "links": [],
+                    "messageAttributes": null,
+                    "messageResult": {
+                        "errorCode": null,
+                        "status": "Success"
+                    },
+                    "pay": null,
+                    "platformData": {
+                        "tenantPhoneNumber": "+18333537233"
+                    },
+                    "platformProperties": null,
+                    "postbackData": null,
+                    "proxyInteraction": null,
+                    "quiqReply": null,
+                    "richText": null,
+                    "sourcePlatform": "SMS",
+                    "text": "winks1955@yahoo.com",
+                    "times": null,
+                    "timestamp": 1707844658762,
+                    "trackLinks": null,
+                    "transcriptHints": null
+                }
+            ],
+            "metrics": {
+                "averageAgentMessageDuration": null,
+                "averageCustomerMessageDuration": 13570,
+                "averageResponseTime": null,
+                "handleTime": null,
+                "initialAgentResponseDuration": null,
+                "initialAgentResponseDurationSinceAssignment": null,
+                "numberOfAcceptedTransfers": 0,
+                "numberOfAgentMessages": 6,
+                "numberOfCustomerMessages": 5,
+                "numberOfRequeues": 0,
+                "numberOfResponseTimerExpirations": 0,
+                "numberOfSystemMessages": 0,
+                "timeToFirstResponse": null,
+                "workTime": 4161
+            },
+            "originalContactPointId": null,
+            "originalTenantHandle": {
+                "handle": "+18333537233",
+                "platform": "SMS"
+            },
+            "owner": "customer.ambassador.bot",
+            "pay": {
+                "payments": []
+            },
+            "queue": "routing-bot",
+            "relevantNotifications": [],
+            "routingHints": null,
+            "startTime": 1707844600362,
+            "startedBy": {
+                "id": null,
+                "type": "customer"
+            },
+            "status": "active",
+            "surveys": {
+                "default": null
+            },
+            "testContext": null,
+            "timers": {
+                "invitationTimer": null,
+                "responseTimer": 1707846459080
+            },
+            "webData": null,
+            "endpointId": "acl-safe"
+        },
+        "derivedData": {
+            "lastCustomerMessage": {
+                "assets": [],
+                "auth": null,
+                "author": "+16789067972",
+                "card": null,
+                "carousel": null,
+                "directives": null,
+                "externalAssets": [],
+                "fromCustomer": true,
+                "id": "mid.1707844658775.6aaf05df29831c2c4a",
+                "inResponseTo": null,
+                "links": [],
+                "messageAttributes": null,
+                "messageResult": {
+                    "errorCode": null,
+                    "status": "Success"
+                },
+                "pay": null,
+                "platformData": {
+                    "tenantPhoneNumber": "+18333537233"
+                },
+                "platformProperties": null,
+                "postbackData": null,
+                "proxyInteraction": null,
+                "quiqReply": null,
+                "richText": null,
+                "sourcePlatform": "SMS",
+                "text": "winks1955@yahoo.com",
+                "times": null,
+                "timestamp": 1707844658762,
+                "trackLinks": null,
+                "transcriptHints": null
+            }
+        },
+        "tenant": "acloserlook",
+        "botType": "CAP",
+        "hookType": "ValidateShopperInputData",
+        "isAsync": 0,
+        "query": {
+            "code": "uu33jvA0l3IJWYp1dCdq4sh13/DL2pfbiMs3bYGcbrpS0eVYCwMOGg==",
+            "botType": "CAP",
+            "hookType": "ValidateShopperInputData",
+            "isAsync": "0"
+        },
+        "headers": {
+            "host": "prod-cap-functionapp-3-31-22.azurewebsites.net",
+            "user-Agent": "quiq/quiqbot",
+            "accept-Encoding": "gzip,deflate",
+            "content-Type": "application/json",
+            "max-Forwards": "10",
+            "traceparent": "00-6c05a6a93fac6078569bbfb407f78267-b27fbbc5d14293a3-00",
+            "content-Length": "10723",
+            "x-Quiq-Correlation-Id": "594232335d4be30aa16cdfa2d103b19e",
+            "x-ARR-LOG-ID": "1b70552b-fa5c-44ca-bb73-95cab2a4b345",
+            "cLIENT-IP": "18.208.40.145:51205",
+            "x-Client-IP": "18.208.40.145",
+            "dISGUISED-HOST": "prod-cap-functionapp-3-31-22.azurewebsites.net",
+            "x-SITE-DEPLOYMENT-ID": "prod-cap-functionapp-3-31-22",
+            "wAS-DEFAULT-HOSTNAME": "prod-cap-functionapp-3-31-22.azurewebsites.net",
+            "x-Forwarded-Proto": "https",
+            "x-AppService-Proto": "https",
+            "x-ARR-SSL": "2048|256|CN=Microsoft Azure TLS Issuing CA 01, O=Microsoft Corporation, C=US|CN=*.azurewebsites.net, O=Microsoft Corporation, L=Redmond, S=WA, C=US",
+            "x-Forwarded-TlsVersion": "1.3",
+            "x-Forwarded-For": "18.208.40.145:51205",
+            "x-Original-URL": "/api/QuiqWebhook?code=uu33jvA0l3IJWYp1dCdq4sh13%2FDL2pfbiMs3bYGcbrpS0eVYCwMOGg%3D%3D&botType=CAP&hookType=ValidateShopperInputData&isAsync=0",
+            "x-WAWS-Unencoded-URL": "/api/QuiqWebhook?code=uu33jvA0l3IJWYp1dCdq4sh13%2FDL2pfbiMs3bYGcbrpS0eVYCwMOGg%3D%3D&botType=CAP&hookType=ValidateShopperInputData&isAsync=0",
+            "x-Client-Port": "51205"
+        },
+        "sys": {
+            "methodName": "QuiqWebhook",
+            "utcNow": "2024-02-13T17:17:39.208Z",
+            "randGuid": "21b108d7-98e4-454f-a884-6ed1b5256042"
+        }
+    },
+    "bindingDefinitions": [
+        {
+            "name": "req",
+            "type": "httpTrigger",
+            "direction": "in"
+        },
+        {
+            "name": "res",
+            "type": "http",
+            "direction": "out"
+        }
+    ],
+    "req": null,
+    "res": {
+        "headers": {},
+        "cookies": []
+    }
+}

@@ -1,0 +1,1359 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Performance Metrics Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@3.0.1"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@1.2.1"></script>
+    <style>
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+
+        .metric-card {
+            transition: all 0.3s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+
+        .json-editor {
+            font-family: monospace;
+            min-height: 200px;
+        }
+
+        .tab-active {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50">
+    <div class="container mx-auto px-4 py-8">
+        <header class="mb-8">
+            <h1 class="text-3xl font-bold text-gray-800">Database Performance Metrics Dashboard</h1>
+            <p class="text-gray-600">Visualize and analyze your database performance metrics over time</p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+            <!-- JSON Input Section -->
+            <div class="bg-white rounded-lg shadow p-6 col-span-1">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Input JSON Data</h2>
+                <textarea id="jsonInput" class="w-full border rounded p-3 json-editor"
+                    placeholder="Paste your JSON data here..."></textarea>
+                <div class="mt-4 flex justify-between">
+                    <button id="loadSampleBtn"
+                        class="px-4 py-2 bg-blue-100 text-blue-700 rounded hover:bg-blue-200 transition">Load
+                        Sample</button>
+                    <button id="visualizeBtn"
+                        class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition">Visualize
+                        Data</button>
+                </div>
+            </div>
+
+            <!-- Summary Cards -->
+            <div class="bg-white rounded-lg shadow p-6 col-span-2">
+                <h2 class="text-xl font-semibold mb-4 text-gray-800">Database Health Summary</h2>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4" id="summaryCards">
+                    <!-- Cards will be populated by JavaScript -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="mb-6 border-b border-gray-200">
+            <nav class="-mb-px flex space-x-8">
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="dtu">DTU Metrics</button>
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="wait">Wait Stats</button>
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="io">I/O Stats</button>
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="storage">Storage</button>
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="sessions">Sessions</button>
+                <button
+                    class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-gray-700 hover:border-gray-300"
+                    data-tab="throttling">Throttling</button>
+            </nav>
+        </div>
+
+        <!-- Tab Content -->
+        <div id="tabContent">
+            <!-- DTU Metrics Tab -->
+            <div class="tab-panel hidden" id="dtu-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">CPU Utilization (%)</h3>
+                        <div class="chart-container">
+                            <canvas id="cpuChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Memory Utilization (%)</h3>
+                        <div class="chart-container">
+                            <canvas id="memoryChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Data I/O Utilization (%)</h3>
+                        <div class="chart-container">
+                            <canvas id="dataIoChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Log I/O Utilization (%)</h3>
+                        <div class="chart-container">
+                            <canvas id="logIoChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wait Stats Tab -->
+            <div class="tab-panel hidden" id="wait-tab">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Filter Wait Types:</label>
+                    <div class="flex flex-wrap gap-2" id="waitTypeFilters"></div>
+                </div>
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Wait Time (ms)</h3>
+                        <div class="chart-container">
+                            <canvas id="waitTimeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Waiting Tasks Count</h3>
+                        <div class="chart-container">
+                            <canvas id="waitTasksChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- I/O Stats Tab -->
+            <div class="tab-panel hidden" id="io-tab">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">Filter Files:</label>
+                    <div class="flex flex-wrap gap-2" id="fileFilters"></div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">I/O Stall (ms)</h3>
+                        <div class="chart-container">
+                            <canvas id="ioStallChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Read/Write Operations</h3>
+                        <div class="chart-container">
+                            <canvas id="ioOpsChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Storage Tab -->
+            <div class="tab-panel hidden" id="storage-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">File Sizes (MB)</h3>
+                        <div class="chart-container">
+                            <canvas id="fileSizeChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Transaction Log Usage</h3>
+                        <div class="chart-container">
+                            <canvas id="logUsageChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sessions Tab -->
+            <div class="tab-panel hidden" id="sessions-tab">
+                <div class="grid grid-cols-1 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Session Count by Status</h3>
+                        <div class="chart-container">
+                            <canvas id="sessionChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Throttling Tab -->
+            <div class="tab-panel hidden" id="throttling-tab">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">DTU Throttling Events</h3>
+                        <div class="chart-container">
+                            <canvas id="throttlingChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white rounded-lg shadow p-6 metric-card">
+                        <h3 class="text-lg font-medium mb-4 text-gray-800">Resource Utilization During Throttling</h3>
+                        <div class="chart-container">
+                            <canvas id="throttlingResourcesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Sample data
+        const sampleData = {
+            "dtu_cpu_stats": {
+                "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                "sample_time": "2025-05-05T09:07:15.740",
+                "cpu_percent": 0.64,
+                "data_io_percent": 0.00,
+                "log_io_percent": 0.03,
+                "memory_percent": 80.46
+            },
+            "wait_stats": [
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "wait_type": "SOS_WORK_DISPATCHER",
+                    "wait_time_ms": 1941956152,
+                    "max_wait_time_ms": 6936830,
+                    "signal_wait_time_ms": 73182,
+                    "waiting_tasks_count": 554914
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "wait_type": "HADR_WORK_QUEUE",
+                    "wait_time_ms": 122223178,
+                    "max_wait_time_ms": 10019,
+                    "signal_wait_time_ms": 36960,
+                    "waiting_tasks_count": 562645
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "wait_type": "XE_DISPATCHER_WAIT",
+                    "wait_time_ms": 102182897,
+                    "max_wait_time_ms": 60017,
+                    "signal_wait_time_ms": 0,
+                    "waiting_tasks_count": 72843
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "wait_type": "PREEMPTIVE_XE_DISPATCHER",
+                    "wait_time_ms": 79438503,
+                    "max_wait_time_ms": 2172198,
+                    "signal_wait_time_ms": 0,
+                    "waiting_tasks_count": 668
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "wait_type": "SLEEP_TASK",
+                    "wait_time_ms": 76753993,
+                    "max_wait_time_ms": 900015,
+                    "signal_wait_time_ms": 18674,
+                    "waiting_tasks_count": 2073614
+                }
+            ],
+            "io_stats": [
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "data_0",
+                    "file_type": "ROWS",
+                    "num_of_reads": 379610,
+                    "num_of_writes": 241239,
+                    "io_stall_read_ms": 10400317,
+                    "io_stall_write_ms": 875001,
+                    "size_mb": 190000.000000000
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "log",
+                    "file_type": "LOG",
+                    "num_of_reads": 1325,
+                    "num_of_writes": 262430,
+                    "io_stall_read_ms": 34388,
+                    "io_stall_write_ms": 707269,
+                    "size_mb": 4944.000000000
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "dfa_data_3",
+                    "file_type": "ROWS",
+                    "num_of_reads": 109835,
+                    "num_of_writes": 91504,
+                    "io_stall_read_ms": 4192331,
+                    "io_stall_write_ms": 361126,
+                    "size_mb": 80000.000000000
+                }
+            ],
+            "file_sizes": [
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "data_0",
+                    "type_desc": "ROWS",
+                    "size_mb": 190000.000000
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "log",
+                    "type_desc": "LOG",
+                    "size_mb": 4944.000000
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "dfa_data_3",
+                    "type_desc": "ROWS",
+                    "size_mb": 80000.000000
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "file_name": "XTP",
+                    "type_desc": "FILESTREAM",
+                    "size_mb": 0.000000
+                }
+            ],
+            "log_usage": {
+                "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                "total_log_mb": 4943.992187500,
+                "used_log_mb": 30.707031250,
+                "used_log_pct": 6.2109786e-001
+            },
+            "session_counts": [
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "status": "running",
+                    "session_count": 3
+                },
+                {
+                    "snapshot_time": "2025-05-05T09:07:23.0774289Z",
+                    "status": "sleeping",
+                    "session_count": 24
+                }
+            ],
+            "tempdb_usage": {
+                "snapshot_time": "2025-05-05T09:07:23.0774289Z"
+            },
+            "throttling_events": [
+                {
+                    "end_time": "2025-05-05T08:03:20.403",
+                    "dtu_percent": 95.99,
+                    "avg_cpu_percent": 13.40,
+                    "avg_data_io_percent": 95.99,
+                    "avg_log_write_percent": 0.15,
+                    "avg_memory_usage_percent": 64.51
+                }
+            ]
+        };
+
+        // Chart instances
+        let charts = {
+            cpuChart: null,
+            memoryChart: null,
+            dataIoChart: null,
+            logIoChart: null,
+            waitTimeChart: null,
+            waitTasksChart: null,
+            ioStallChart: null,
+            ioOpsChart: null,
+            fileSizeChart: null,
+            logUsageChart: null,
+            sessionChart: null,
+            throttlingChart: null,
+            throttlingResourcesChart: null
+        };
+
+        // Data storage
+        let metricsData = {
+            dtu: [],
+            wait: [],
+            io: [],
+            fileSizes: [],
+            logUsage: [],
+            sessions: [],
+            throttling: []
+        };
+
+        // DOM Ready
+        document.addEventListener('DOMContentLoaded', function () {
+            // Initialize UI elements
+            initTabs();
+            initButtons();
+
+            // Load sample data
+            document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+            visualizeData(sampleData);
+        });
+
+        // Initialize tab functionality
+        function initTabs() {
+            const tabButtons = document.querySelectorAll('.tab-button');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    // Remove active class from all buttons
+                    tabButtons.forEach(btn => {
+                        btn.classList.remove('tab-active');
+                        btn.classList.add('text-gray-500', 'border-transparent');
+                    });
+
+                    // Add active class to clicked button
+                    this.classList.add('tab-active');
+                    this.classList.remove('text-gray-500', 'border-transparent');
+
+                    // Hide all tab panels
+                    document.querySelectorAll('.tab-panel').forEach(panel => {
+                        panel.classList.add('hidden');
+                    });
+
+                    // Show selected tab panel
+                    const tabId = this.getAttribute('data-tab') + '-tab';
+                    document.getElementById(tabId).classList.remove('hidden');
+                });
+            });
+
+            // Activate first tab by default
+            tabButtons[0].click();
+        }
+
+        // Initialize buttons
+        function initButtons() {
+            document.getElementById('loadSampleBtn').addEventListener('click', function () {
+                document.getElementById('jsonInput').value = JSON.stringify(sampleData, null, 2);
+            });
+
+            document.getElementById('visualizeBtn').addEventListener('click', function () {
+                try {
+                    const jsonData = JSON.parse(document.getElementById('jsonInput').value);
+                    visualizeData(jsonData);
+                } catch (e) {
+                    alert('Invalid JSON data. Please check your input.');
+                    console.error(e);
+                }
+            });
+        }
+
+        // Visualize the data
+        function visualizeData(data) {
+            // For a real application, we would process multiple data points over time
+            // For this demo, we'll just use the single data point
+
+            // Process DTU metrics
+            metricsData.dtu.push({
+                time: new Date(data.dtu_cpu_stats.snapshot_time),
+                cpu: data.dtu_cpu_stats.cpu_percent,
+                memory: data.dtu_cpu_stats.memory_percent,
+                dataIo: data.dtu_cpu_stats.data_io_percent,
+                logIo: data.dtu_cpu_stats.log_io_percent
+            });
+
+            // Process wait stats
+            data.wait_stats.forEach(wait => {
+                metricsData.wait.push({
+                    time: new Date(wait.snapshot_time),
+                    waitType: wait.wait_type,
+                    waitTime: wait.wait_time_ms,
+                    maxWaitTime: wait.max_wait_time_ms,
+                    signalWaitTime: wait.signal_wait_time_ms,
+                    waitingTasks: wait.waiting_tasks_count
+                });
+            });
+
+            // Process I/O stats
+            data.io_stats.forEach(io => {
+                metricsData.io.push({
+                    time: new Date(io.snapshot_time),
+                    fileName: io.file_name,
+                    fileType: io.file_type,
+                    reads: io.num_of_reads,
+                    writes: io.num_of_writes,
+                    readStall: io.io_stall_read_ms,
+                    writeStall: io.io_stall_write_ms,
+                    size: io.size_mb
+                });
+            });
+
+            // Process file sizes
+            data.file_sizes.forEach(file => {
+                metricsData.fileSizes.push({
+                    time: new Date(file.snapshot_time),
+                    fileName: file.file_name,
+                    type: file.type_desc,
+                    size: file.size_mb
+                });
+            });
+
+            // Process log usage
+            metricsData.logUsage.push({
+                time: new Date(data.log_usage.snapshot_time),
+                total: data.log_usage.total_log_mb,
+                used: data.log_usage.used_log_mb,
+                usedPct: data.log_usage.used_log_pct
+            });
+
+            // Process sessions
+            data.session_counts.forEach(session => {
+                metricsData.sessions.push({
+                    time: new Date(session.snapshot_time),
+                    status: session.status,
+                    count: session.session_count
+                });
+            });
+
+            // Process throttling events
+            data.throttling_events.forEach(event => {
+                metricsData.throttling.push({
+                    time: new Date(event.end_time),
+                    dtuPercent: event.dtu_percent,
+                    cpuPercent: event.avg_cpu_percent,
+                    dataIoPercent: event.avg_data_io_percent,
+                    logWritePercent: event.avg_log_write_percent,
+                    memoryPercent: event.avg_memory_usage_percent
+                });
+            });
+
+            // Update summary cards
+            updateSummaryCards(data);
+
+            // Create charts
+            createCharts();
+
+            // Create filters
+            createWaitTypeFilters();
+            createFileFilters();
+        }
+
+        // Update summary cards
+        function updateSummaryCards(data) {
+            const summaryCards = document.getElementById('summaryCards');
+            summaryCards.innerHTML = '';
+
+            // CPU Card
+            summaryCards.innerHTML += `
+                <div class="bg-blue-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-blue-800">CPU Usage</p>
+                            <p class="text-2xl font-bold text-blue-900">${data.dtu_cpu_stats.cpu_percent}%</p>
+                        </div>
+                        <div class="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Memory Card
+            summaryCards.innerHTML += `
+                <div class="bg-purple-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-purple-800">Memory Usage</p>
+                            <p class="text-2xl font-bold text-purple-900">${data.dtu_cpu_stats.memory_percent}%</p>
+                        </div>
+                        <div class="h-10 w-10 rounded-full bg-purple-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-purple-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v14a1 1 0 01-1 1H5a1 1 0 01-1-1V5z" />
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8h2m-4 4h2m-8 0h2m-4 4h2" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // I/O Card
+            summaryCards.innerHTML += `
+                <div class="bg-green-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-green-800">Data I/O</p>
+                            <p class="text-2xl font-bold text-green-900">${data.dtu_cpu_stats.data_io_percent}%</p>
+                        </div>
+                        <div class="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Sessions Card
+            const totalSessions = data.session_counts.reduce((sum, session) => sum + session.session_count, 0);
+            summaryCards.innerHTML += `
+                <div class="bg-orange-50 rounded-lg p-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm font-medium text-orange-800">Active Sessions</p>
+                            <p class="text-2xl font-bold text-orange-900">${totalSessions}</p>
+                        </div>
+                        <div class="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <svg class="h-6 w-6 text-orange-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Create wait type filters
+        function createWaitTypeFilters() {
+            const filtersContainer = document.getElementById('waitTypeFilters');
+            filtersContainer.innerHTML = '';
+
+            // Get unique wait types
+            const waitTypes = [...new Set(metricsData.wait.map(item => item.waitType))];
+
+            waitTypes.forEach(type => {
+                filtersContainer.innerHTML += `
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" class="wait-type-filter" value="${type}" checked>
+                        <span class="ml-2 text-sm">${type}</span>
+                    </label>
+                `;
+            });
+
+            // Add event listeners
+            document.querySelectorAll('.wait-type-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', function () {
+                    updateWaitStatsCharts();
+                });
+            });
+        }
+
+        // Create file filters
+        function createFileFilters() {
+            const filtersContainer = document.getElementById('fileFilters');
+            filtersContainer.innerHTML = '';
+
+            // Get unique file names
+            const fileNames = [...new Set(metricsData.io.map(item => item.fileName))];
+
+            fileNames.forEach(name => {
+                filtersContainer.innerHTML += `
+                    <label class="inline-flex items-center">
+                        <input type="checkbox" class="file-filter" value="${name}" checked>
+                        <span class="ml-2 text-sm">${name}</span>
+                    </label>
+                `;
+            });
+
+            // Add event listeners
+            document.querySelectorAll('.file-filter').forEach(checkbox => {
+                checkbox.addEventListener('change', function () {
+                    updateIoStatsCharts();
+                });
+            });
+        }
+
+        // Create all charts
+        function createCharts() {
+            // DTU Metrics Charts
+            createDtuCharts();
+
+            // Wait Stats Charts
+            createWaitStatsCharts();
+
+            // I/O Stats Charts
+            createIoStatsCharts();
+
+            // Storage Charts
+            createStorageCharts();
+
+            // Session Charts
+            createSessionChart();
+
+            // Throttling Charts
+            createThrottlingCharts();
+        }
+
+        // Create DTU metrics charts
+        function createDtuCharts() {
+            // CPU Chart
+            if (charts.cpuChart) charts.cpuChart.destroy();
+            charts.cpuChart = new Chart(
+                document.getElementById('cpuChart'),
+                getTimeSeriesChartConfig(
+                    'CPU Utilization (%)',
+                    metricsData.dtu.map(item => item.time),
+                    metricsData.dtu.map(item => item.cpu),
+                    'rgba(59, 130, 246, 0.5)',
+                    'CPU %'
+                )
+            );
+
+            // Memory Chart
+            if (charts.memoryChart) charts.memoryChart.destroy();
+            charts.memoryChart = new Chart(
+                document.getElementById('memoryChart'),
+                getTimeSeriesChartConfig(
+                    'Memory Utilization (%)',
+                    metricsData.dtu.map(item => item.time),
+                    metricsData.dtu.map(item => item.memory),
+                    'rgba(168, 85, 247, 0.5)',
+                    'Memory %'
+                )
+            );
+
+            // Data I/O Chart
+            if (charts.dataIoChart) charts.dataIoChart.destroy();
+            charts.dataIoChart = new Chart(
+                document.getElementById('dataIoChart'),
+                getTimeSeriesChartConfig(
+                    'Data I/O Utilization (%)',
+                    metricsData.dtu.map(item => item.time),
+                    metricsData.dtu.map(item => item.dataIo),
+                    'rgba(16, 185, 129, 0.5)',
+                    'Data I/O %'
+                )
+            );
+
+            // Log I/O Chart
+            if (charts.logIoChart) charts.logIoChart.destroy();
+            charts.logIoChart = new Chart(
+                document.getElementById('logIoChart'),
+                getTimeSeriesChartConfig(
+                    'Log I/O Utilization (%)',
+                    metricsData.dtu.map(item => item.time),
+                    metricsData.dtu.map(item => item.logIo),
+                    'rgba(245, 158, 11, 0.5)',
+                    'Log I/O %'
+                )
+            );
+        }
+
+        // Create wait stats charts
+        function createWaitStatsCharts() {
+            // Get selected wait types
+            const selectedWaitTypes = Array.from(document.querySelectorAll('.wait-type-filter:checked')).map(el => el.value);
+
+            // Filter data
+            const filteredData = metricsData.wait.filter(item => selectedWaitTypes.includes(item.waitType));
+
+            // Group by wait type
+            const groupedData = {};
+            filteredData.forEach(item => {
+                if (!groupedData[item.waitType]) {
+                    groupedData[item.waitType] = [];
+                }
+                groupedData[item.waitType].push(item);
+            });
+
+            // Prepare datasets for wait time chart
+            const waitTimeDatasets = [];
+            const waitTasksDatasets = [];
+
+            const colors = [
+                'rgba(59, 130, 246, 0.5)',
+                'rgba(16, 185, 129, 0.5)',
+                'rgba(245, 158, 11, 0.5)',
+                'rgba(239, 68, 68, 0.5)',
+                'rgba(139, 92, 246, 0.5)'
+            ];
+
+            let colorIndex = 0;
+            for (const [waitType, items] of Object.entries(groupedData)) {
+                waitTimeDatasets.push({
+                    label: waitType,
+                    data: items.map(item => item.waitTime),
+                    backgroundColor: colors[colorIndex % colors.length],
+                    borderColor: colors[colorIndex % colors.length].replace('0.5', '1'),
+                    borderWidth: 1
+                });
+
+                waitTasksDatasets.push({
+                    label: waitType,
+                    data: items.map(item => item.waitingTasks),
+                    backgroundColor: colors[colorIndex % colors.length],
+                    borderColor: colors[colorIndex % colors.length].replace('0.5', '1'),
+                    borderWidth: 1
+                });
+
+                colorIndex++;
+            }
+
+            // Wait Time Chart
+            if (charts.waitTimeChart) charts.waitTimeChart.destroy();
+            charts.waitTimeChart = new Chart(
+                document.getElementById('waitTimeChart'),
+                getTimeSeriesMultiDatasetChartConfig(
+                    'Wait Time (ms)',
+                    filteredData.map(item => item.time),
+                    waitTimeDatasets
+                )
+            );
+
+            // Wait Tasks Chart
+            if (charts.waitTasksChart) charts.waitTasksChart.destroy();
+            charts.waitTasksChart = new Chart(
+                document.getElementById('waitTasksChart'),
+                getTimeSeriesMultiDatasetChartConfig(
+                    'Waiting Tasks Count',
+                    filteredData.map(item => item.time),
+                    waitTasksDatasets
+                )
+            );
+        }
+
+        // Create I/O stats charts
+        function createIoStatsCharts() {
+            // Get selected files
+            const selectedFiles = Array.from(document.querySelectorAll('.file-filter:checked')).map(el => el.value);
+
+            // Filter data
+            const filteredData = metricsData.io.filter(item => selectedFiles.includes(item.fileName));
+
+            // Group by file
+            const groupedData = {};
+            filteredData.forEach(item => {
+                if (!groupedData[item.fileName]) {
+                    groupedData[item.fileName] = [];
+                }
+                groupedData[item.fileName].push(item);
+            });
+
+            // Prepare datasets for charts
+            const ioStallDatasets = [];
+            const ioOpsDatasets = [];
+
+            const colors = [
+                'rgba(59, 130, 246, 0.5)',
+                'rgba(16, 185, 129, 0.5)',
+                'rgba(245, 158, 11, 0.5)',
+                'rgba(239, 68, 68, 0.5)',
+                'rgba(139, 92, 246, 0.5)'
+            ];
+
+            let colorIndex = 0;
+            for (const [fileName, items] of Object.entries(groupedData)) {
+                // I/O Stall chart (stacked)
+                ioStallDatasets.push({
+                    label: `${fileName} - Read Stall`,
+                    data: items.map(item => item.readStall),
+                    backgroundColor: colors[colorIndex % colors.length],
+                    borderColor: colors[colorIndex % colors.length].replace('0.5', '1'),
+                    borderWidth: 1,
+                    stack: 'stack1'
+                });
+
+                ioStallDatasets.push({
+                    label: `${fileName} - Write Stall`,
+                    data: items.map(item => item.writeStall),
+                    backgroundColor: colors[(colorIndex + 1) % colors.length],
+                    borderColor: colors[(colorIndex + 1) % colors.length].replace('0.5', '1'),
+                    borderWidth: 1,
+                    stack: 'stack1'
+                });
+
+                // I/O Operations chart
+                ioOpsDatasets.push({
+                    label: `${fileName} - Reads`,
+                    data: items.map(item => item.reads),
+                    backgroundColor: colors[colorIndex % colors.length],
+                    borderColor: colors[colorIndex % colors.length].replace('0.5', '1'),
+                    borderWidth: 1
+                });
+
+                ioOpsDatasets.push({
+                    label: `${fileName} - Writes`,
+                    data: items.map(item => item.writes),
+                    backgroundColor: colors[(colorIndex + 1) % colors.length],
+                    borderColor: colors[(colorIndex + 1) % colors.length].replace('0.5', '1'),
+                    borderWidth: 1
+                });
+
+                colorIndex += 2;
+            }
+
+            // I/O Stall Chart
+            if (charts.ioStallChart) charts.ioStallChart.destroy();
+            charts.ioStallChart = new Chart(
+                document.getElementById('ioStallChart'),
+                getTimeSeriesMultiDatasetChartConfig(
+                    'I/O Stall (ms)',
+                    filteredData.map(item => item.time),
+                    ioStallDatasets,
+                    true
+                )
+            );
+
+            // I/O Operations Chart
+            if (charts.ioOpsChart) charts.ioOpsChart.destroy();
+            charts.ioOpsChart = new Chart(
+                document.getElementById('ioOpsChart'),
+                getTimeSeriesMultiDatasetChartConfig(
+                    'Read/Write Operations',
+                    filteredData.map(item => item.time),
+                    ioOpsDatasets
+                )
+            );
+        }
+
+        // Create storage charts
+        function createStorageCharts() {
+            // File Size Chart (bar chart)
+            if (charts.fileSizeChart) charts.fileSizeChart.destroy();
+            charts.fileSizeChart = new Chart(
+                document.getElementById('fileSizeChart'),
+                {
+                    type: 'bar',
+                    data: {
+                        labels: metricsData.fileSizes.map(item => item.fileName),
+                        datasets: [{
+                            label: 'File Size (MB)',
+                            data: metricsData.fileSizes.map(item => item.size),
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.5)',
+                                'rgba(16, 185, 129, 0.5)',
+                                'rgba(245, 158, 11, 0.5)',
+                                'rgba(239, 68, 68, 0.5)'
+                            ],
+                            borderColor: [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(16, 185, 129, 1)',
+                                'rgba(245, 158, 11, 1)',
+                                'rgba(239, 68, 68, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'File Sizes (MB)'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.toLocaleString()} MB`;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Size (MB)'
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+
+            // Log Usage Chart (pie chart)
+            if (charts.logUsageChart) charts.logUsageChart.destroy();
+            charts.logUsageChart = new Chart(
+                document.getElementById('logUsageChart'),
+                {
+                    type: 'doughnut',
+                    data: {
+                        labels: ['Used Log Space', 'Free Log Space'],
+                        datasets: [{
+                            data: [
+                                metricsData.logUsage[0].used,
+                                metricsData.logUsage[0].total - metricsData.logUsage[0].used
+                            ],
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.5)',
+                                'rgba(200, 200, 200, 0.5)'
+                            ],
+                            borderColor: [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(200, 200, 200, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Transaction Log Usage'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        const label = context.label || '';
+                                        const value = context.raw || 0;
+                                        const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                        const percentage = Math.round((value / total) * 100);
+                                        return `${label}: ${value.toFixed(2)} MB (${percentage}%)`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+
+        // Create session chart
+        function createSessionChart() {
+            // Group by status
+            const statusGroups = {};
+            metricsData.sessions.forEach(item => {
+                if (!statusGroups[item.status]) {
+                    statusGroups[item.status] = 0;
+                }
+                statusGroups[item.status] += item.count;
+            });
+
+            // Session Chart (bar chart)
+            if (charts.sessionChart) charts.sessionChart.destroy();
+            charts.sessionChart = new Chart(
+                document.getElementById('sessionChart'),
+                {
+                    type: 'bar',
+                    data: {
+                        labels: Object.keys(statusGroups),
+                        datasets: [{
+                            label: 'Session Count',
+                            data: Object.values(statusGroups),
+                            backgroundColor: [
+                                'rgba(59, 130, 246, 0.5)',
+                                'rgba(16, 185, 129, 0.5)'
+                            ],
+                            borderColor: [
+                                'rgba(59, 130, 246, 1)',
+                                'rgba(16, 185, 129, 1)'
+                            ],
+                            borderWidth: 1
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Session Count by Status'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: {
+                                    display: true,
+                                    text: 'Session Count'
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+
+        // Create throttling charts
+        function createThrottlingCharts() {
+            if (metricsData.throttling.length === 0) return;
+
+            // Throttling Events Chart
+            if (charts.throttlingChart) charts.throttlingChart.destroy();
+            charts.throttlingChart = new Chart(
+                document.getElementById('throttlingChart'),
+                getTimeSeriesChartConfig(
+                    'DTU Utilization During Throttling (%)',
+                    metricsData.throttling.map(item => item.time),
+                    metricsData.throttling.map(item => item.dtuPercent),
+                    'rgba(239, 68, 68, 0.5)',
+                    'DTU %'
+                )
+            );
+
+            // Resource Utilization During Throttling
+            if (charts.throttlingResourcesChart) charts.throttlingResourcesChart.destroy();
+            charts.throttlingResourcesChart = new Chart(
+                document.getElementById('throttlingResourcesChart'),
+                {
+                    type: 'bar',
+                    data: {
+                        labels: metricsData.throttling.map(item => item.time.toLocaleTimeString()),
+                        datasets: [
+                            {
+                                label: 'CPU %',
+                                data: metricsData.throttling.map(item => item.cpuPercent),
+                                backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                                borderColor: 'rgba(59, 130, 246, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Data I/O %',
+                                data: metricsData.throttling.map(item => item.dataIoPercent),
+                                backgroundColor: 'rgba(16, 185, 129, 0.5)',
+                                borderColor: 'rgba(16, 185, 129, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Log Write %',
+                                data: metricsData.throttling.map(item => item.logWritePercent),
+                                backgroundColor: 'rgba(245, 158, 11, 0.5)',
+                                borderColor: 'rgba(245, 158, 11, 1)',
+                                borderWidth: 1
+                            },
+                            {
+                                label: 'Memory %',
+                                data: metricsData.throttling.map(item => item.memoryPercent),
+                                backgroundColor: 'rgba(168, 85, 247, 0.5)',
+                                borderColor: 'rgba(168, 85, 247, 1)',
+                                borderWidth: 1
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Resource Utilization During Throttling'
+                            },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw}%`;
+                                    }
+                                }
+                            },
+                            zoom: {
+                                zoom: {
+                                    wheel: {
+                                        enabled: true,
+                                    },
+                                    pinch: {
+                                        enabled: true
+                                    },
+                                    mode: 'xy',
+                                },
+                                pan: {
+                                    enabled: true,
+                                    mode: 'xy',
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                stacked: false,
+                            },
+                            y: {
+                                stacked: false,
+                                beginAtZero: true,
+                                max: 100,
+                                title: {
+                                    display: true,
+                                    text: 'Utilization (%)'
+                                }
+                            }
+                        }
+                    }
+                }
+            );
+        }
+
+        // Update wait stats charts when filters change
+        function updateWaitStatsCharts() {
+            createWaitStatsCharts();
+        }
+
+        // Update I/O stats charts when filters change
+        function updateIoStatsCharts() {
+            createIoStatsCharts();
+        }
+
+        // Helper function to create time series chart config
+        function getTimeSeriesChartConfig(title, labels, data, bgColor, datasetLabel) {
+            return {
+                type: 'line',
+                data: {
+                    labels: labels.map(date => date.toLocaleString()),
+                    datasets: [{
+                        label: datasetLabel,
+                        data: data,
+                        backgroundColor: bgColor,
+                        borderColor: bgColor.replace('0.5', '1'),
+                        borderWidth: 2,
+                        tension: 0.1,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.dataset.label}: ${context.raw}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy HH:mm:ss',
+                                displayFormats: {
+                                    millisecond: 'HH:mm:ss.SSS',
+                                    second: 'HH:mm:ss',
+                                    minute: 'HH:mm',
+                                    hour: 'MMM d, HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: datasetLabel
+                            }
+                        }
+                    }
+                }
+            };
+        }
+
+        // Helper function to create multi-dataset time series chart config
+        function getTimeSeriesMultiDatasetChartConfig(title, labels, datasets, stacked = false) {
+            return {
+                type: 'line',
+                data: {
+                    labels: labels.map(date => date.toLocaleString()),
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: title
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `${context.dataset.label}: ${context.raw}`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            zoom: {
+                                wheel: {
+                                    enabled: true,
+                                },
+                                pinch: {
+                                    enabled: true
+                                },
+                                mode: 'xy',
+                            },
+                            pan: {
+                                enabled: true,
+                                mode: 'xy',
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                tooltipFormat: 'MMM d, yyyy HH:mm:ss',
+                                displayFormats: {
+                                    millisecond: 'HH:mm:ss.SSS',
+                                    second: 'HH:mm:ss',
+                                    minute: 'HH:mm',
+                                    hour: 'MMM d, HH:mm'
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Time'
+                            }
+                        },
+                        y: {
+                            stacked: stacked,
+                            title: {
+                                display: true,
+                                text: title.includes('(') ? title.split('(')[1].replace(')', '') : 'Value'
+                            }
+                        }
+                    }
+                }
+            };
+        }
+    </script>
+</body>
+
+</html>

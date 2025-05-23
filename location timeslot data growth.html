@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .data-card {
+            transition: all 0.3s ease;
+        }
+
+        .data-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12 animate-fade-in" style="animation-delay: 0.1s;">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-3">Historical Data Analysis</h1>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Visualizing data accumulation over different time periods
+            </p>
+        </header>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div class="chart-container bg-white p-6 rounded-xl shadow-md animate-fade-in"
+                style="animation-delay: 0.2s;">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Bar Chart View</h2>
+                <div class="h-96">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container bg-white p-6 rounded-xl shadow-md animate-fade-in"
+                style="animation-delay: 0.3s;">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Line Chart View</h2>
+                <div class="h-96">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.4s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">20 Years</h3>
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">Oldest</span>
+                </div>
+                <p class="text-3xl font-bold text-indigo-600 mb-2">34,738</p>
+                <p class="text-gray-500 text-sm">Data points collected over 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.5s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">10 Years</h3>
+                    <span
+                        class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Significant</span>
+                </div>
+                <p class="text-3xl font-bold text-green-600 mb-2">175,534</p>
+                <p class="text-gray-500 text-sm">5x more data than 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.6s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">5 Years</h3>
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">Recent</span>
+                </div>
+                <p class="text-3xl font-bold text-yellow-600 mb-2">425,792</p>
+                <p class="text-gray-500 text-sm">12x more data than 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.7s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">1 Year</h3>
+                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">Latest</span>
+                </div>
+                <p class="text-3xl font-bold text-red-600 mb-2">577,976</p>
+                <p class="text-gray-500 text-sm">16.6x more data than 20 years</p>
+            </div>
+        </div>
+        
+
+        <div class="bg-white p-6 rounded-xl shadow-md animate-fade-in" style="animation-delay: 0.8s;">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Key Insights</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-indigo-50 p-5 rounded-lg">
+                    <h3 class="font-medium text-indigo-700 mb-2">Exponential Growth</h3>
+                    <p class="text-gray-700">The data shows exponential growth in collection rates, with the most recent
+                        year accounting for more data than the first 15 years combined.</p>
+                </div>
+                <div class="bg-green-50 p-5 rounded-lg">
+                    <h3 class="font-medium text-green-700 mb-2">Acceleration Point</h3>
+                    <p class="text-gray-700">The most significant acceleration occurred between 10 and 5 years ago,
+                        where data collection increased by 250%.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const data = {
+                labels: ['20', '15', '10', '9', '8', '7', '6', '5', '4', '3', '2', '1'],
+                datasets: [{
+                    label: 'Data Points',
+                    data: [34738, 53291, 175534, 216038, 265158, 341004, 387536, 425792, 454612, 466625, 506665, 577976],
+                    backgroundColor: [
+                        'rgba(79, 70, 229, 0.7)',
+                        'rgba(99, 102, 241, 0.7)',
+                        'rgba(129, 140, 248, 0.7)',
+                        'rgba(165, 180, 252, 0.7)',
+                        'rgba(199, 210, 254, 0.7)',
+                        'rgba(224, 231, 255, 0.7)',
+                        'rgba(239, 246, 255, 0.7)',
+                        'rgba(254, 202, 202, 0.7)',
+                        'rgba(252, 165, 165, 0.7)',
+                        'rgba(248, 113, 113, 0.7)',
+                        'rgba(239, 68, 68, 0.7)',
+                        'rgba(220, 38, 38, 0.7)'
+                    ],
+                    borderColor: [
+                        'rgba(79, 70, 229, 1)',
+                        'rgba(99, 102, 241, 1)',
+                        'rgba(129, 140, 248, 1)',
+                        'rgba(165, 180, 252, 1)',
+                        'rgba(199, 210, 254, 1)',
+                        'rgba(224, 231, 255, 1)',
+                        'rgba(239, 246, 255, 1)',
+                        'rgba(254, 202, 202, 1)',
+                        'rgba(252, 165, 165, 1)',
+                        'rgba(248, 113, 113, 1)',
+                        'rgba(239, 68, 68, 1)',
+                        'rgba(220, 38, 38, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            // Bar Chart
+            const barCtx = document.getElementById('barChart').getContext('2d');
+            const barChart = new Chart(barCtx, {
+                type: 'bar',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `Years: ${context.label} | Data Points: ${context.raw.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Data Points'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Years'
+                            }
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // Line Chart
+            const lineCtx = document.getElementById('lineChart').getContext('2d');
+            const lineChart = new Chart(lineCtx, {
+                type: 'line',
+                data: data,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function (context) {
+                                    return `Years: ${context.label} | Data Points: ${context.raw.toLocaleString()}`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function (value) {
+                                    return value.toLocaleString();
+                                }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Data Points'
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Years'
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.4,
+                            borderWidth: 3
+                        },
+                        point: {
+                            radius: 5,
+                            hoverRadius: 7
+                        }
+                    },
+                    animation: {
+                        duration: 1500,
+                        easing: 'easeOutQuart'
+                    }
+                }
+            });
+
+            // Add animation to cards
+            const cards = document.querySelectorAll('.data-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${0.4 + index * 0.1}s`;
+            });
+        });
+    </script>
+</body>
+
+</html>

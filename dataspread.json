@@ -1,0 +1,42 @@
+[
+  {
+    "source_schema": "afs",
+    "source_table": "FileInfo",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":456},{\"Years\":2,\"RecordCount\":791},{\"Years\":1,\"RecordCount\":791}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "Conversation",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":9239},{\"Years\":3,\"RecordCount\":35925},{\"Years\":2,\"RecordCount\":85835},{\"Years\":1,\"RecordCount\":165446}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "Feedback",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":224894},{\"Years\":3,\"RecordCount\":978030},{\"Years\":2,\"RecordCount\":2483828},{\"Years\":1,\"RecordCount\":5011528}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "Message",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":296361},{\"Years\":3,\"RecordCount\":1245443},{\"Years\":2,\"RecordCount\":3124823},{\"Years\":1,\"RecordCount\":6274452}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "MessageFile",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":456},{\"Years\":2,\"RecordCount\":791},{\"Years\":1,\"RecordCount\":791}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "SiteReport",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":7552},{\"Years\":3,\"RecordCount\":31177},{\"Years\":2,\"RecordCount\":76293},{\"Years\":1,\"RecordCount\":148072}]"
+  },
+  {
+    "source_schema": "cap",
+    "source_table": "SiteReportImage",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":432},{\"Years\":2,\"RecordCount\":1214},{\"Years\":1,\"RecordCount\":2640}]"
+  },
+  {
+    "source_schema": "log",
+    "source_table": "AuthenticationAudit",
+    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":304788},{\"Years\":4,\"RecordCount\":791884},{\"Years\":3,\"RecordCount\":1301256},{\"Years\":2,\"RecordCount\":1979914},{\"Years\":1,\"RecordCount\":2789947}]"
+  }
+]

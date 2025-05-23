@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Visualization</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .chart-container {
+            transition: all 0.3s ease;
+        }
+
+        .chart-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+
+        .data-card {
+            transition: all 0.3s ease;
+        }
+
+        .data-card:hover {
+            transform: scale(1.03);
+            box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .animate-fade-in {
+            animation: fadeIn 0.6s ease-out forwards;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <header class="text-center mb-12 animate-fade-in" style="animation-delay: 0.1s;">
+            <h1 class="text-4xl font-bold text-indigo-700 mb-3">Historical Data Analysis</h1>
+            <p class="text-xl text-gray-600 max-w-2xl mx-auto">
+                Visualizing data accumulation over different time periods
+            </p>
+        </header>
+        <div class="mb-8 flex flex-col sm:flex-row items-center gap-4">
+            <input type="file" id="jsonUpload" accept=".json" class="border p-2 rounded" />
+            <select id="tableToggle" class="border p-2 rounded">
+                <option value="all">All Tables</option>
+                <!-- Table options will be populated dynamically -->
+            </select>
+            <button id="sampleBtn" class="bg-indigo-600 text-white px-4 py-2 rounded">Show Sample</button>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
+            <div class="chart-container bg-white p-6 rounded-xl shadow-md animate-fade-in"
+                style="animation-delay: 0.2s;">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Bar Chart View</h2>
+                <div class="h-[48rem]">
+                    <canvas id="barChart"></canvas>
+                </div>
+            </div>
+
+            <div class="chart-container bg-white p-6 rounded-xl shadow-md animate-fade-in"
+                style="animation-delay: 0.3s;">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-4">Line Chart View</h2>
+                <div class="h-[48rem]">
+                    <canvas id="lineChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.4s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">20 Years</h3>
+                    <span class="px-3 py-1 bg-indigo-100 text-indigo-800 rounded-full text-sm font-medium">Oldest</span>
+                </div>
+                <p class="text-3xl font-bold text-indigo-600 mb-2">34,738</p>
+                <p class="text-gray-500 text-sm">Data points collected over 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.5s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">10 Years</h3>
+                    <span
+                        class="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">Significant</span>
+                </div>
+                <p class="text-3xl font-bold text-green-600 mb-2">175,534</p>
+                <p class="text-gray-500 text-sm">5x more data than 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.6s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">5 Years</h3>
+                    <span class="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">Recent</span>
+                </div>
+                <p class="text-3xl font-bold text-yellow-600 mb-2">425,792</p>
+                <p class="text-gray-500 text-sm">12x more data than 20 years</p>
+            </div>
+
+            <div class="data-card bg-white p-6 rounded-xl shadow-md flex flex-col animate-fade-in"
+                style="animation-delay: 0.7s;">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-lg font-medium text-gray-700">1 Year</h3>
+                    <span class="px-3 py-1 bg-red-100 text-red-800 rounded-full text-sm font-medium">Latest</span>
+                </div>
+                <p class="text-3xl font-bold text-red-600 mb-2">577,976</p>
+                <p class="text-gray-500 text-sm">16.6x more data than 20 years</p>
+            </div>
+        </div>
+
+
+        <div class="bg-white p-6 rounded-xl shadow-md animate-fade-in" style="animation-delay: 0.8s;">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-4">Key Insights</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-indigo-50 p-5 rounded-lg Exponential_Growth">
+                    <h3 class="font-medium text-indigo-700 mb-2 ">Exponential Growth</h3>
+                    <p class="text-gray-700">The data shows exponential growth in collection rates, with the most recent
+                        year accounting for more data than the first 15 years combined.</p>
+                </div>
+                <div class="bg-green-50 p-5 rounded-lg Acceleration_Point">
+                    <h3 class="font-medium text-green-700 mb-2">Acceleration Point</h3>
+                    <p class="text-gray-700">The most significant acceleration occurred between 10 and 5 years ago,
+                        where data collection increased by 250%.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const sampleData = [
+                {
+                    "source_schema": "afs",
+                    "source_table": "FileInfo",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":456},{\"Years\":2,\"RecordCount\":791},{\"Years\":1,\"RecordCount\":791}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "Conversation",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":9239},{\"Years\":3,\"RecordCount\":35925},{\"Years\":2,\"RecordCount\":85835},{\"Years\":1,\"RecordCount\":165446}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "Feedback",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":224894},{\"Years\":3,\"RecordCount\":978030},{\"Years\":2,\"RecordCount\":2483828},{\"Years\":1,\"RecordCount\":5011528}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "Message",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":296361},{\"Years\":3,\"RecordCount\":1245443},{\"Years\":2,\"RecordCount\":3124823},{\"Years\":1,\"RecordCount\":6274452}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "MessageFile",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":456},{\"Years\":2,\"RecordCount\":791},{\"Years\":1,\"RecordCount\":791}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "SiteReport",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":7552},{\"Years\":3,\"RecordCount\":31177},{\"Years\":2,\"RecordCount\":76293},{\"Years\":1,\"RecordCount\":148072}]"
+                },
+                {
+                    "source_schema": "cap",
+                    "source_table": "SiteReportImage",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":0},{\"Years\":4,\"RecordCount\":101},{\"Years\":3,\"RecordCount\":432},{\"Years\":2,\"RecordCount\":1214},{\"Years\":1,\"RecordCount\":2640}]"
+                },
+                {
+                    "source_schema": "log",
+                    "source_table": "AuthenticationAudit",
+                    "dataSpread": "[{\"Years\":20,\"RecordCount\":0},{\"Years\":15,\"RecordCount\":0},{\"Years\":10,\"RecordCount\":0},{\"Years\":9,\"RecordCount\":0},{\"Years\":8,\"RecordCount\":0},{\"Years\":7,\"RecordCount\":0},{\"Years\":6,\"RecordCount\":0},{\"Years\":5,\"RecordCount\":304788},{\"Years\":4,\"RecordCount\":791884},{\"Years\":3,\"RecordCount\":1301256},{\"Years\":2,\"RecordCount\":1979914},{\"Years\":1,\"RecordCount\":2789947}]"
+                }
+            ];
+            let uploadedData = sampleData.map((data) => {
+                return {
+                    "source_schema": data.source_schema,
+                    "source_table": data.source_table,
+                    "dataSpread": JSON.parse(data.dataSpread)
+                }
+            }).slice();
+            let barChart, lineChart;
+            let yearsLabels = [];
+
+            function getCombinedData(data) {
+                const yearsSet = new Set();
+                data.forEach(table => table.dataSpread.forEach(d => yearsSet.add(d.Years)));
+                const years = Array.from(yearsSet).sort((a, b) => b - a);
+                const combined = years.map(year => {
+                    let sum = 0;
+                    data.forEach(table => {
+                        const found = table.dataSpread.find(d => d.Years === year);
+                        if (found) sum += found.RecordCount;
+                    });
+                    return sum;
+                });
+                return { years, combined };
+            }
+
+            function updateBarChart(data) {
+                const { years } = getCombinedData(data);
+                yearsLabels = years.map(String);
+                const datasets = data.map((table, idx) => {
+                    const color = `hsl(${idx * 60}, 70%, 60%)`;
+                    return {
+                        label: `${table.source_schema}.${table.source_table}`,
+                        data: years.map(year => {
+                            const found = table.dataSpread.find(d => d.Years === year);
+                            return found ? found.RecordCount : 0;
+                        }),
+                        backgroundColor: color,
+                        borderColor: color,
+                        borderWidth: 1
+                    };
+                });
+                if (barChart) barChart.destroy();
+                const barCtx = document.getElementById('barChart').getContext('2d');
+                barChart = new Chart(barCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: yearsLabels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            tooltip: {
+                                mode: 'index',
+                                intersect: false,
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.toLocaleString()}`;
+                                    }
+                                }
+                            },
+                            legend: { display: true }
+                        },
+                        scales: {
+                            x: { stacked: true, title: { display: true, text: 'More Than X Years' } },
+                            y: {
+                                stacked: true, beginAtZero: true, title: { display: true, text: 'Rows Count' },
+                                ticks: { callback: v => v.toLocaleString() }
+                            }
+                        },
+                        animation: { duration: 1200, easing: 'easeOutQuart' }
+                    }
+                });
+            }
+
+            function updateLineChart(data, selectedTable = 'all') {
+                if (lineChart) lineChart.destroy();
+                const lineChartContainer = document.getElementById('lineChart').parentNode;
+                lineChartContainer.innerHTML = '<canvas id="lineChart"></canvas>';
+                let tablesToPlot = data;
+                if (selectedTable !== 'all') {
+                    tablesToPlot = data.filter(t => `${t.source_schema}.${t.source_table}` === selectedTable);
+                }
+                const datasets = tablesToPlot.map((table, idx) => {
+                    const color = `hsl(${idx * 60}, 70%, 50%)`;
+                    return {
+                        label: `${table.source_schema}.${table.source_table}`,
+                        data: yearsLabels.map(year => {
+                            const found = table.dataSpread.find(d => String(d.Years) === year);
+                            return found ? found.RecordCount : 0;
+                        }),
+                        borderColor: color,
+                        backgroundColor: color,
+                        tension: 0.4,
+                        borderWidth: 3,
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: false
+                    };
+                });
+                const lineCtx = document.getElementById('lineChart').getContext('2d');
+                lineChart = new Chart(lineCtx, {
+                    type: 'line',
+                    data: {
+                        labels: yearsLabels,
+                        datasets: datasets
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { display: true },
+                            tooltip: {
+                                callbacks: {
+                                    label: function (context) {
+                                        return `${context.dataset.label}: ${context.raw.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        },
+                        scales: {
+                            y: {
+                                beginAtZero: true,
+                                title: { display: true, text: 'Rows Count' },
+                                ticks: { callback: v => v.toLocaleString() }
+                            },
+                            x: { title: { display: true, text: 'More Than X Years' } }
+                        },
+                        animation: { duration: 1200, easing: 'easeOutQuart' }
+                    }
+                });
+            }
+
+            function updateCardsAndInsights(data) {
+                const { years, combined } = getCombinedData(data);
+                const cardYears = [20, 10, 5, 1];
+                const cardValues = cardYears.map(y => {
+                    const idx = years.indexOf(y);
+                    return idx !== -1 ? combined[idx] : 0;
+                });
+                const cardEls = document.querySelectorAll('.data-card');
+                cardEls.forEach((card, i) => {
+                    if (cardValues[i] !== undefined) {
+                        card.querySelector('p.text-3xl').textContent = cardValues[i].toLocaleString();
+                        if (i > 0) {
+                            const ratio = cardValues[0] > 0 ? (cardValues[i] / cardValues[0]).toFixed(1) : 0;
+                            card.querySelector('p.text-gray-500').textContent = `${ratio}x more data than 20 years`;
+                        }
+                    }
+                });
+                // Optionally update insights here
+                const exponentialGrowth = document.querySelector('.Exponential_Growth');
+                const accelerationInsight = document.querySelector('.Acceleration_Point');
+
+
+
+
+                const totalFirst15Years = combined.reduce((acc, val) => acc + val, 0);
+                const totalRecentYear = combined[0];
+
+                exponentialGrowth.innerHTML = `
+                <h3 class="font-medium text-indigo-700 mb-2">Exponential Growth</h3>
+                <p class="text-gray-700">The data shows exponential growth in collection rates, with the most recent
+                 year accounting for more data than the first 15 years combined.</p>
+                `;
+
+                const recentYears = combined.slice(3, 8);
+                const previousYears = combined.slice(0, 2);
+                const recentSum = recentYears.reduce((acc, val) => acc + val, 0);
+                const previousSum = previousYears.reduce((acc, val) => acc + val, 1);
+                const acceleration = ((recentSum - previousSum) / previousSum) * 100;
+
+                console.log(recentSum)
+                console.log(previousSum)
+
+                accelerationInsight.innerHTML = `
+                <h3 class="font-medium text-green-700 mb-2">Acceleration Point</h3>
+                <p class="text-gray-700">The most significant acceleration occurred between 10 and 5 years ago,
+                 where data collection increased by ${acceleration.toFixed(2)}%.</p>
+                `;
+
+
+
+            }
+
+            function populateTableToggle(data) {
+                const select = document.getElementById('tableToggle');
+                select.innerHTML = `<option value="all">All Tables</option>`;
+                data.forEach(table => {
+                    const val = `${table.source_schema}.${table.source_table}`;
+                    select.innerHTML += `<option value="${val}">${val}</option>`;
+                });
+            }
+
+            document.getElementById('jsonUpload').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = function (evt) {
+                    try {
+                        const json = JSON.parse(evt.target.result);
+
+                        uploadedData = json.map((data) => {
+                            return {
+                                "source_schema": data.source_schema,
+                                "source_table": data.source_table,
+                                "dataSpread": JSON.parse(data.dataSpread)
+                            }
+                        });
+
+                        if (Array.isArray(json)) {
+                            console.log(json)
+                            populateTableToggle(uploadedData);
+                            updateBarChart(uploadedData);
+                            updateLineChart(uploadedData);
+                            updateCardsAndInsights(uploadedData);
+                        } else {
+                            alert('Invalid JSON format.');
+                        }
+                    } catch (err) {
+                        alert('Failed to parse JSON.');
+                    }
+                };
+                reader.readAsText(file);
+            });
+
+            document.getElementById('tableToggle').addEventListener('change', function (e) {
+                updateLineChart(uploadedData, e.target.value);
+            });
+
+            document.getElementById('sampleBtn').addEventListener('click', function () {
+                uploadedData = sampleData.slice();
+                populateTableToggle(uploadedData);
+                updateBarChart(uploadedData);
+                updateLineChart(uploadedData);
+                updateCardsAndInsights(uploadedData);
+            });
+
+            // Initial render
+            populateTableToggle(uploadedData);
+            updateBarChart(uploadedData);
+            updateLineChart(uploadedData);
+            updateCardsAndInsights(uploadedData);
+
+            // Card animation
+            const cards = document.querySelectorAll('.data-card');
+            cards.forEach((card, index) => {
+                card.style.animationDelay = `${0.4 + index * 0.1}s`;
+            });
+        });
+    </script>
+</body>
+
+</html>

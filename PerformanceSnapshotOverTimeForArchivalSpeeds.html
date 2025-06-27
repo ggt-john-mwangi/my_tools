@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Query Performance Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .tab-active {
+            background-color: #4f46e5;
+            color: white;
+        }
+        
+        .tab-inactive {
+            background-color: #f3f4f6;
+            color: #374151;
+        }
+        
+        .tab-inactive:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .chart-container {
+            height: 500px;
+        }
+        
+        .upload-area {
+            border: 2px dashed #d1d5db;
+            transition: all 0.3s ease;
+        }
+        
+        .upload-area:hover {
+            border-color: #4f46e5;
+            background-color: #fafafa;
+        }
+        
+        .upload-area.dragover {
+            border-color: #4f46e5;
+            background-color: #f0f9ff;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .query-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 6px;
+            background-color: #f9fafb;
+            transition: all 0.2s ease;
+        }
+        
+        .query-checkbox:hover {
+            background-color: #f3f4f6;
+        }
+        
+        .query-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .query-checkbox label {
+            font-weight: 500;
+            cursor: pointer;
+            user-select: none;
+        }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-indigo-700 mb-2">Database Query Performance Optimization Tracker</h1>
+            <p class="text-gray-600">Track the impact of database optimizations on query performance over time</p>
+        </header>
+
+        <!-- File Upload Section -->
+        <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+            <h2 class="text-xl font-semibold text-gray-800 mb-4">Upload Performance Data</h2>
+            <div class="upload-area rounded-lg p-8 text-center cursor-pointer" id="uploadArea">
+                <input type="file" id="fileInput" accept=".json" class="hidden" />
+                <div class="text-gray-500">
+                    <svg class="mx-auto h-12 w-12 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+                        <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+                    </svg>
+                    <p class="text-lg font-medium">Drop JSON file here or click to upload</p>
+                    <p class="text-sm">Sample data is already loaded for demonstration</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabs Navigation -->
+        <div class="bg-white rounded-lg shadow-md mb-8">
+            <div class="border-b">
+                <nav class="flex space-x-1 p-4">
+                    <button class="tab-button px-4 py-2 rounded-md font-medium text-sm tab-active" data-tab="cpu">
+                        Avg CPU Time
+                    </button>
+                    <button class="tab-button px-4 py-2 rounded-md font-medium text-sm tab-inactive" data-tab="elapsed">
+                        Avg Elapsed Time
+                    </button>
+                    <button class="tab-button px-4 py-2 rounded-md font-medium text-sm tab-inactive" data-tab="reads">
+                        Avg Logical Reads
+                    </button>
+                    <button class="tab-button px-4 py-2 rounded-md font-medium text-sm tab-inactive" data-tab="physical">
+                        Physical Reads
+                    </button>
+                    <button class="tab-button px-4 py-2 rounded-md font-medium text-sm tab-inactive" data-tab="cache-hit">
+                        Cache Hit Ratio
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Chart Container -->
+            <div class="p-6">
+                <!-- Tab Description -->
+                <div class="mb-6 p-4 bg-gray-50 rounded-lg">
+                    <div id="tab-description" class="text-sm text-gray-700">
+                        <div id="desc-cpu" class="tab-desc">
+                            <strong>Average CPU Time per Execution:</strong> Track how much CPU processing time each query uses per execution (seconds). Decreasing trends indicate successful query optimizations, indexing improvements, or more efficient query plans.
+                        </div>
+                        <div id="desc-elapsed" class="tab-desc hidden">
+                            <strong>Average Elapsed Time per Execution:</strong> Monitor total execution time per query (seconds), including CPU time plus I/O waits. Reductions show improved overall query performance from optimizations like better indexing or query tuning.
+                        </div>
+                        <div id="desc-reads" class="tab-desc hidden">
+                            <strong>Average Logical Reads per Execution:</strong> Track data pages accessed from memory per query execution. Lower values indicate more efficient data access patterns, often achieved through better indexing or query optimization.
+                        </div>
+                        <div id="desc-physical" class="tab-desc hidden">
+                            <strong>Physical Reads (Daily Total):</strong> Monitor disk I/O operations when data isn't found in cache. Decreasing trends suggest improved cache utilization or reduced data access requirements from optimizations.
+                        </div>
+                        <div id="desc-cache-hit" class="tab-desc hidden">
+                            <strong>Cache Hit Ratio:</strong> Track percentage of data requests served from memory cache. Improving ratios (approaching 100%) indicate better memory utilization and reduced disk I/O from optimization efforts.
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Query Legend with Checkboxes -->
+                <div class="mb-4 p-4 bg-white border rounded-lg">
+                    <h3 class="text-sm font-medium text-gray-800 mb-3">Select Queries to Display:</h3>
+                    <div id="query-checkboxes" class="flex flex-wrap gap-3">
+                        <!-- Checkboxes will be dynamically generated here -->
+                    </div>
+                </div>
+
+                <div class="chart-container">
+                    <canvas id="performanceChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let performanceChart;
+        let currentData = {};
+        let currentTab = 'cpu';
+        let visibleQueries = new Set(['q1']); // Only q1 visible by default
+
+        // Sample data from the JSON file for initial display
+        const sampleData = [
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-06-21T14:00:23.0104613Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":8122577,\"total_elapsed_time_ms\":15667500,\"total_logical_reads\":139568,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":22,\"last_execution_time\":\"2025-06-21T14:00:06.230\",\"avg_cpu_ms\":369208.04545454545454545,\"avg_elapsed_ms\":712159.09090909090909090,\"avg_logical_reads\":6344.00000000000000000},\r\n    \"q2\": {\"snapshot_time\":\"2025-06-21T14:00:23.0104613Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":2202058,\"total_elapsed_time_ms\":3626174,\"total_logical_reads\":14298,\"total_logical_writes\":0,\"total_physical_reads\":1,\"execution_count\":22,\"last_execution_time\":\"2025-06-21T14:00:07.220\",\"avg_cpu_ms\":100093.54545454545454545,\"avg_elapsed_ms\":164826.09090909090909090,\"avg_logical_reads\":649.90909090909090909}\r\n  }}"
+            },
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-05-09T08:00:19.6543523Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":6535740,\"total_elapsed_time_ms\":54636386,\"total_logical_reads\":114182,\"total_logical_writes\":0,\"total_physical_reads\":1,\"execution_count\":18,\"last_execution_time\":\"2025-05-09T08:00:03.573\",\"avg_cpu_ms\":363096.66666666666666666,\"avg_elapsed_ms\":3035354.77777777777777777,\"avg_logical_reads\":6343.44444444444444444},\r\n    \"q2\": {\"snapshot_time\":\"2025-05-09T08:00:19.6543523Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":1757369,\"total_elapsed_time_ms\":18976831,\"total_logical_reads\":11672,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":18,\"last_execution_time\":\"2025-05-09T08:00:04.553\",\"avg_cpu_ms\":97631.61111111111111111,\"avg_elapsed_ms\":1054268.38888888888888888,\"avg_logical_reads\":648.44444444444444444}\r\n  }}"
+            },
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-05-14T08:00:26.2662379Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":1468953,\"total_elapsed_time_ms\":2515104,\"total_logical_reads\":25359,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":4,\"last_execution_time\":\"2025-05-14T08:00:10.823\",\"avg_cpu_ms\":367238.25000000000000000,\"avg_elapsed_ms\":628776.00000000000000000,\"avg_logical_reads\":6339.75000000000000000},\r\n    \"q2\": {\"snapshot_time\":\"2025-05-14T08:00:26.2662379Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":380586,\"total_elapsed_time_ms\":765014,\"total_logical_reads\":2600,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":4,\"last_execution_time\":\"2025-05-14T08:00:11.570\",\"avg_cpu_ms\":95146.50000000000000000,\"avg_elapsed_ms\":191253.50000000000000000,\"avg_logical_reads\":650.00000000000000000}\r\n  }}"
+            },
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-05-09T14:01:20.8803543Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":6885448,\"total_elapsed_time_ms\":55199295,\"total_logical_reads\":120533,\"total_logical_writes\":0,\"total_physical_reads\":1,\"execution_count\":19,\"last_execution_time\":\"2025-05-09T14:00:03.780\",\"avg_cpu_ms\":362392.00000000000000000,\"avg_elapsed_ms\":2905226.05263157894736842,\"avg_logical_reads\":6343.84210526315789473},\r\n    \"q2\": {\"snapshot_time\":\"2025-05-09T14:01:20.8803543Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":1851697,\"total_elapsed_time_ms\":19071162,\"total_logical_reads\":12320,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":19,\"last_execution_time\":\"2025-05-09T14:00:04.333\",\"avg_cpu_ms\":97457.73684210526315789,\"avg_elapsed_ms\":1003745.36842105263157894,\"avg_logical_reads\":648.42105263157894736}\r\n  }}"
+            },
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-05-07T14:00:56.9426961Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":4030343,\"total_elapsed_time_ms\":49570075,\"total_logical_reads\":69773,\"total_logical_writes\":0,\"total_physical_reads\":1,\"execution_count\":11,\"last_execution_time\":\"2025-05-07T14:00:04.463\",\"avg_cpu_ms\":366394.81818181818181818,\"avg_elapsed_ms\":4506370.45454545454545454,\"avg_logical_reads\":6343.00000000000000000},\r\n    \"q2\": {\"snapshot_time\":\"2025-05-07T14:00:56.9426961Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":1067124,\"total_elapsed_time_ms\":17042850,\"total_logical_reads\":7132,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":11,\"last_execution_time\":\"2025-05-07T14:00:04.990\",\"avg_cpu_ms\":97011.27272727272727272,\"avg_elapsed_ms\":1549350.00000000000000000,\"avg_logical_reads\":648.36363636363636363}\r\n  }}"
+            },
+            {
+                "my_json": "{\"queries\":{\r\n    \"q1\": {\"snapshot_time\":\"2025-05-12T02:00:28.1821979Z\",\"query_key\":\"q1\",\"total_worker_time_ms\":10504159,\"total_elapsed_time_ms\":63810049,\"total_logical_reads\":183939,\"total_logical_writes\":0,\"total_physical_reads\":1,\"execution_count\":29,\"last_execution_time\":\"2025-05-12T02:00:10.880\",\"avg_cpu_ms\":362212.37931034482758620,\"avg_elapsed_ms\":2200346.51724137931034482,\"avg_logical_reads\":6342.72413793103448275},\r\n    \"q2\": {\"snapshot_time\":\"2025-05-12T02:00:28.1821979Z\",\"query_key\":\"q2\",\"total_worker_time_ms\":2814786,\"total_elapsed_time_ms\":20765954,\"total_logical_reads\":18804,\"total_logical_writes\":0,\"total_physical_reads\":0,\"execution_count\":29,\"last_execution_time\":\"2025-05-12T02:00:11.660\",\"avg_cpu_ms\":97061.58620689655172413,\"avg_elapsed_ms\":716067.37931034482758620,\"avg_logical_reads\":648.41379310344827586}\r\n  }}"
+            }
+        ];
+
+        // Color palette for queries
+        const queryColors = {
+            'q1': { bg: 'rgba(79, 70, 229, 0.2)', border: 'rgba(79, 70, 229, 1)' },
+            'q2': { bg: 'rgba(16, 185, 129, 0.2)', border: 'rgba(16, 185, 129, 1)' },
+            'q3': { bg: 'rgba(245, 158, 11, 0.2)', border: 'rgba(245, 158, 11, 1)' },
+            'q4': { bg: 'rgba(239, 68, 68, 0.2)', border: 'rgba(239, 68, 68, 1)' },
+            'q5': { bg: 'rgba(139, 92, 246, 0.2)', border: 'rgba(139, 92, 246, 1)' },
+            'q6': { bg: 'rgba(236, 72, 153, 0.2)', border: 'rgba(236, 72, 153, 1)' },
+            'q7': { bg: 'rgba(14, 165, 233, 0.2)', border: 'rgba(14, 165, 233, 1)' },
+            'q8': { bg: 'rgba(34, 197, 94, 0.2)', border: 'rgba(34, 197, 94, 1)' },
+            'q9': { bg: 'rgba(251, 146, 60, 0.2)', border: 'rgba(251, 146, 60, 1)' },
+            'qTen': { bg: 'rgba(168, 85, 247, 0.2)', border: 'rgba(168, 85, 247, 1)' }
+        };
+
+        function processJsonData(jsonArray) {
+            const processedData = {};
+            
+            jsonArray.forEach(item => {
+                const queryData = JSON.parse(item.my_json).queries;
+                
+                Object.keys(queryData).forEach(queryKey => {
+                    const query = queryData[queryKey];
+                    const date = query.snapshot_time.split('T')[0]; // Extract date part
+                    
+                    if (!processedData[date]) {
+                        processedData[date] = {};
+                    }
+                    
+                    // Convert milliseconds to seconds for time metrics
+                    const avgCpuSec = (parseFloat(query.avg_cpu_ms) || 0) / 1000;
+                    const avgElapsedSec = (parseFloat(query.avg_elapsed_ms) || 0) / 1000;
+                    
+                    // Calculate cache hit ratio
+                    const logicalReads = parseFloat(query.total_logical_reads) || 0;
+                    const physicalReads = parseInt(query.total_physical_reads) || 0;
+                    const cacheHitRatio = logicalReads > 0 ? ((logicalReads - physicalReads) / logicalReads) * 100 : 0;
+                    
+                    processedData[date][queryKey] = {
+                        avg_cpu_sec: avgCpuSec,
+                        avg_elapsed_sec: avgElapsedSec,
+                        avg_logical_reads: parseFloat(query.avg_logical_reads) || 0,
+                        total_physical_reads: physicalReads,
+                        cache_hit_ratio: Math.max(0, Math.min(100, cacheHitRatio)) // Clamp between 0-100%
+                    };
+                    
+                    // Debug log to verify conversion
+                    console.log(`${date} ${queryKey}: CPU ${query.avg_cpu_ms}ms → ${avgCpuSec}s`);
+                });
+            });
+            
+            return processedData;
+        }
+
+        function createChart(data, metric) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            
+            if (performanceChart) {
+                performanceChart.destroy();
+            }
+
+            const dates = Object.keys(data).sort((a, b) => new Date(a) - new Date(b)); // Proper date sorting
+            const datasets = [];
+            
+            // Get all unique queries
+            const allQueries = new Set();
+            dates.forEach(date => {
+                Object.keys(data[date]).forEach(query => allQueries.add(query));
+            });
+
+            allQueries.forEach(queryKey => {
+                // Only create dataset if query is visible
+                if (!visibleQueries.has(queryKey)) return;
+                
+                const color = queryColors[queryKey] || { 
+                    bg: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.2)`, 
+                    border: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)` 
+                };
+
+                datasets.push({
+                    label: queryKey,
+                    data: dates.map(date => data[date][queryKey] ? data[date][queryKey][metric] : null),
+                    borderColor: color.border,
+                    backgroundColor: color.bg,
+                    borderWidth: 2,
+                    tension: 0.5, // Increased tension for smoother curves
+                    fill: false,
+                    spanGaps: true,
+                    pointBackgroundColor: color.border,
+                    pointBorderColor: '#ffffff',
+                    pointBorderWidth: 2,
+                    pointRadius: 4,
+                    pointHoverRadius: 8,
+                    pointHoverBackgroundColor: color.border,
+                    pointHoverBorderColor: '#ffffff',
+                    pointHoverBorderWidth: 3
+                });
+            });
+
+            const metricLabels = {
+                'avg_cpu_sec': 'Average CPU Time (seconds)',
+                'avg_elapsed_sec': 'Average Elapsed Time (seconds)',
+                'avg_logical_reads': 'Average Logical Reads per Execution',
+                'total_physical_reads': 'Physical Reads (Daily Total)',
+                'cache_hit_ratio': 'Cache Hit Ratio (%)'
+            };
+
+            performanceChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: dates,
+                    datasets: datasets
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: `Query ${metricLabels[metric]} Over Time`,
+                            font: {
+                                size: 16,
+                                weight: 'bold'
+                            }
+                        },
+                        legend: {
+                            display: false // Disable built-in legend since we use checkboxes
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const value = context.raw;
+                                    if (value === null || value === undefined) return `${context.dataset.label}: N/A`;
+                                    
+                                    // Format based on metric type to match y-axis formatting
+                                    if (metric.includes('sec')) {
+                                        return `${context.dataset.label}: ${value.toFixed(2)}s`;
+                                    } else if (metric === 'cache_hit_ratio') {
+                                        return `${context.dataset.label}: ${value.toFixed(1)}%`;
+                                    } else if (metric === 'cpu_efficiency') {
+                                        return `${context.dataset.label}: ${value.toFixed(2)}x`;
+                                    } else {
+                                        return `${context.dataset.label}: ${value.toLocaleString()}`;
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            title: {
+                                display: true,
+                                text: metricLabels[metric]
+                            },
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                                borderDash: [5, 5]
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    if (metric.includes('sec')) {
+                                        return value.toFixed(2) + 's';
+                                    } else if (metric === 'cache_hit_ratio') {
+                                        return value.toFixed(1) + '%';
+                                    } else if (metric === 'cpu_efficiency') {
+                                        return value.toFixed(2) + 'x';
+                                    }
+                                    return value.toLocaleString();
+                                }
+                            }
+                        },
+                        x: {
+                            title: {
+                                display: true,
+                                text: 'Date'
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.1)',
+                                borderDash: [5, 5]
+                            },
+                            ticks: {
+                                callback: function(value, index) {
+                                    const date = new Date(this.getLabelForValue(value));
+                                    return date.toLocaleDateString('en-US', { 
+                                        month: 'short', 
+                                        day: 'numeric',
+                                        year: '2-digit'
+                                    });
+                                }
+                            }
+                        }
+                    },
+                    elements: {
+                        line: {
+                            tension: 0.5 // Additional smoothing at element level
+                        },
+                        point: {
+                            radius: 4,
+                            hoverRadius: 8,
+                            backgroundColor: 'white',
+                            borderWidth: 2
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index'
+                    },
+                    animation: {
+                        duration: 1000,
+                        easing: 'easeInOutQuart'
+                    }
+                }
+            });
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            
+            // Update tab buttons
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+            
+            const activeButton = document.querySelector(`[data-tab="${tab}"]`);
+            activeButton.classList.remove('tab-inactive');
+            activeButton.classList.add('tab-active');
+
+            // Update tab description
+            document.querySelectorAll('.tab-desc').forEach(desc => {
+                desc.classList.add('hidden');
+            });
+            document.getElementById(`desc-${tab}`).classList.remove('hidden');
+
+            // Map tab to metric
+            const metricMap = {
+                'cpu': 'avg_cpu_sec',
+                'elapsed': 'avg_elapsed_sec',
+                'reads': 'avg_logical_reads',
+                'physical': 'total_physical_reads',
+                'cache-hit': 'cache_hit_ratio'
+            };
+
+            createChart(currentData, metricMap[tab]);
+        }
+
+        function generateQueryCheckboxes(data) {
+            const allQueries = new Set();
+            Object.keys(data).forEach(date => {
+                Object.keys(data[date]).forEach(query => allQueries.add(query));
+            });
+
+            const checkboxContainer = document.getElementById('query-checkboxes');
+            checkboxContainer.innerHTML = '';
+
+            Array.from(allQueries).sort().forEach(queryKey => {
+                const color = queryColors[queryKey] || { border: '#666666' };
+                
+                const checkboxWrapper = document.createElement('div');
+                checkboxWrapper.className = 'query-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `query-${queryKey}`;
+                checkbox.checked = visibleQueries.has(queryKey);
+                checkbox.addEventListener('change', function() {
+                    if (this.checked) {
+                        visibleQueries.add(queryKey);
+                    } else {
+                        visibleQueries.delete(queryKey);
+                    }
+                    switchTab(currentTab); // Refresh chart
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `query-${queryKey}`;
+                label.textContent = queryKey;
+                label.style.color = color.border;
+
+                const colorIndicator = document.createElement('div');
+                colorIndicator.style.width = '12px';
+                colorIndicator.style.height = '12px';
+                colorIndicator.style.backgroundColor = color.border;
+                colorIndicator.style.borderRadius = '2px';
+                colorIndicator.style.flexShrink = '0';
+
+                checkboxWrapper.appendChild(checkbox);
+                checkboxWrapper.appendChild(colorIndicator);
+                checkboxWrapper.appendChild(label);
+                checkboxContainer.appendChild(checkboxWrapper);
+            });
+        }
+
+        function loadData(jsonData) {
+            currentData = processJsonData(jsonData);
+            generateQueryCheckboxes(currentData);
+            switchTab(currentTab);
+        }
+
+        // Event listeners
+        document.addEventListener('DOMContentLoaded', function () {
+            // Load sample data initially
+            loadData(sampleData);
+
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(button => {
+                button.addEventListener('click', () => {
+                    switchTab(button.dataset.tab);
+                });
+            });
+
+            // File upload handling
+            const uploadArea = document.getElementById('uploadArea');
+            const fileInput = document.getElementById('fileInput');
+
+            uploadArea.addEventListener('click', () => fileInput.click());
+
+            uploadArea.addEventListener('dragover', (e) => {
+                e.preventDefault();
+                uploadArea.classList.add('dragover');
+            });
+
+            uploadArea.addEventListener('dragleave', () => {
+                uploadArea.classList.remove('dragover');
+            });
+
+            uploadArea.addEventListener('drop', (e) => {
+                e.preventDefault();
+                uploadArea.classList.remove('dragover');
+                
+                const files = e.dataTransfer.files;
+                if (files.length > 0) {
+                    handleFileUpload(files[0]);
+                }
+            });
+
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length > 0) {
+                    handleFileUpload(e.target.files[0]);
+                }
+            });
+
+            function handleFileUpload(file) {
+                if (file.type === 'application/json') {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        try {
+                            const jsonData = JSON.parse(e.target.result);
+                            loadData(jsonData);
+                        } catch (error) {
+                            alert('Error parsing JSON file: ' + error.message);
+                        }
+                    };
+                    reader.readAsText(file);
+                } else {
+                    alert('Please upload a JSON file.');
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>

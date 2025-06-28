@@ -257,14 +257,40 @@
                 // Only create dataset if query is visible
                 if (!visibleQueries.has(queryKey)) return;
                 
+                // Check if query has any actual data across all dates
+                const hasData = dates.some(date => {
+                    const queryData = data[date][queryKey];
+                    const hasValidData = queryData && queryData[metric] !== null && queryData[metric] !== undefined && !isNaN(queryData[metric]);
+                    if (hasValidData) {
+                        console.log(`Query ${queryKey} on ${date}: ${metric} = ${queryData[metric]}`);
+                    }
+                    return hasValidData;
+                });
+                
+                if (!hasData) {
+                    console.log(`Query ${queryKey} has no valid data for metric ${metric}, skipping...`);
+                    return;
+                }
+                
                 const color = queryColors[queryKey] || { 
                     bg: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.2)`, 
                     border: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 1)` 
                 };
 
+                const chartData = dates.map(date => {
+                    const queryData = data[date][queryKey];
+                    if (queryData && queryData[metric] !== null && queryData[metric] !== undefined && !isNaN(queryData[metric])) {
+                        return queryData[metric];
+                    }
+                    return null;
+                });
+
+                // Log the actual data being plotted
+                console.log(`Plotting ${queryKey} ${metric}:`, chartData);
+
                 datasets.push({
                     label: queryKey,
-                    data: dates.map(date => data[date][queryKey] ? data[date][queryKey][metric] : null),
+                    data: chartData,
                     borderColor: color.border,
                     backgroundColor: color.bg,
                     borderWidth: 2,
@@ -439,7 +465,27 @@
             const checkboxContainer = document.getElementById('query-checkboxes');
             checkboxContainer.innerHTML = '';
 
-            Array.from(allQueries).sort().forEach(queryKey => {
+            // Only show queries that actually exist in the data
+            console.log('Available queries in data:', Array.from(allQueries).sort());
+            
+            // Ensure only queries with actual data are shown
+            const validQueries = Array.from(allQueries).filter(queryKey => {
+                // Check if this query has data across multiple dates
+                const datesWithData = Object.keys(data).filter(date => 
+                    data[date][queryKey] && 
+                    Object.keys(data[date][queryKey]).some(metric => 
+                        data[date][queryKey][metric] !== null && 
+                        data[date][queryKey][metric] !== undefined && 
+                        !isNaN(data[date][queryKey][metric])
+                    )
+                );
+                console.log(`Query ${queryKey} has valid data on ${datesWithData.length} dates:`, datesWithData);
+                return datesWithData.length > 0;
+            });
+            
+            console.log('Valid queries with data:', validQueries);
+            
+            validQueries.sort().forEach(queryKey => {
                 const color = queryColors[queryKey] || { border: '#666666' };
                 
                 const checkboxWrapper = document.createElement('div');
